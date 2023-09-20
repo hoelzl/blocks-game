@@ -55,6 +55,8 @@ Texture2D texBall;
 Texture2D texPaddle;
 Texture2D texBrick;
 
+Font font;
+
 void UpdateDrawFrame();     // Update and Draw one frame
 
 int main() {
@@ -68,6 +70,8 @@ int main() {
     texBall = LoadTexture("resources/ball.png");
     texPaddle = LoadTexture("resources/paddle.png");
     texBrick = LoadTexture("resources/brick.png");
+
+    font = LoadFont("resources/setback.png");
 
     // Initialize player
     player.position = (Vector2) {GetScreenWidth() / 2.0f, GetScreenHeight() * 7.0f / 8.0f};
@@ -110,6 +114,8 @@ int main() {
     UnloadTexture(texPaddle);
     UnloadTexture(texBrick);
 
+    UnloadFont(font);
+
     CloseWindow();        // Close window and OpenGL context
 
     return 0;
@@ -140,7 +146,11 @@ void UpdateDrawFrame() {
             break;
         }
         case GAMEPLAY: {
-            if (IsKeyPressed('P')) gamePaused = !gamePaused;
+            if (IsKeyPressed('P')) { gamePaused = !gamePaused; }
+            if (IsKeyPressed('Q')) {
+                screen = ENDING;
+                break;
+            }
             if (!gamePaused) {
                 if (IsKeyDown(KEY_LEFT)) player.position.x -= player.speed.x;
                 if (IsKeyDown(KEY_RIGHT)) player.position.x += player.speed.x;
@@ -242,7 +252,7 @@ void UpdateDrawFrame() {
                 break;
             }
             case TITLE: {
-                DrawText("TITLE SCREEN", 20, 20, 40, DARKGREEN);
+                DrawTextEx(font, "BLOCKS", (Vector2) {100, 80}, 160, 10, MAROON);
 
                 if ((framesCounter / 30) % 2) {
                     DrawText("PRESS [ENTER] OR TAP TO START",
@@ -304,11 +314,17 @@ void UpdateDrawFrame() {
                 break;
             }
             case ENDING: {
-                DrawText("ENDING SCREEN", 20, 20, 40, DARKBLUE);
+                DrawTextEx(font,
+                           "GAME OVER",
+                           (Vector2) {
+                                   GetScreenWidth() / 2.0 - MeasureText("GAME OVER", 80) / 2.0,
+                                   100},
+                           80,
+                           10, MAROON);
                 if ((framesCounter / 30) % 2 == 0) {
-                    DrawText("PRESS [ENTER] OR TAP TO PLAY AGAIN",
-                             GetScreenWidth() / 2 - MeasureText("PRESS [ENTER] OR TAP TO PLAY AGAIN", 20) / 2,
-                             GetScreenHeight() / 2 + 80, 20, DARKBLUE);
+                    DrawText("PRESS [ENTER] TO PLAY AGAIN",
+                             GetScreenWidth() / 2 - MeasureText("PRESS [ENTER] TO PLAY AGAIN", 20) / 2,
+                             GetScreenHeight() / 2 + 80, 20, GRAY);
                 }
                 break;
             }
