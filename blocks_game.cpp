@@ -5,7 +5,7 @@
  * See <https://github.com/raysan5/raylib-intro-course> for the tutorial.
  */
 
-#include <stdio.h>
+#include <cstdio>
 #include "raylib.h"
 #include "raymath.h"
 
@@ -13,7 +13,7 @@
 #include <emscripten/emscripten.h>
 #endif
 
-#define DEBUG_GAME_FLOW
+//#define DEBUG_GAME_FLOW
 
 #ifdef DEBUG_GAME_FLOW
 #define LOGO_SCREEN_DURATION_IN_FRAMES 60
@@ -35,32 +35,32 @@
 #define SOUND_FX_VOLUME 0.2f
 #define MUSIC_STREAM_VOLUME 0.8f
 
-typedef enum GameScreen {
+enum GameScreen {
     LOGO, TITLE, GAMEPLAY, ENDING
-} GameScreen;
+};
 
-typedef struct Player {
+struct Player {
     Vector2 position;
     Vector2 speed;
     Vector2 size;
     Rectangle bounds;
     int lives;
-} Player;
+};
 
-typedef struct Ball {
+struct Ball {
     Vector2 position;
     Vector2 speed;
     float radius;
     bool active;
-} Ball;
+};
 
-typedef struct Brick {
+struct Brick {
     Vector2 position;
     Vector2 size;
     Rectangle bounds;
     int resistance;
     bool active;
-} Brick;
+};
 
 GameScreen screen = LOGO;
 Player player = {0};
@@ -125,27 +125,27 @@ int main() {
     PlayMusicStream(music);
 
     // Initialize player
-    player.position = (Vector2) {GetScreenWidthFloat() / 2.0f, GetScreenHeightFloat() * 7.0f / 8.0f};
-    player.speed = (Vector2) {8.0f, 8.0f};
-    player.size = (Vector2) {100, 24};
+    player.position = Vector2{GetScreenWidthFloat() / 2.0f, GetScreenHeightFloat() * 7.0f / 8.0f};
+    player.speed = Vector2{8.0f, 8.0f};
+    player.size = Vector2{100, 24};
     player.lives = NUM_PLAYER_LIVES;
 
     // Initialize ball
     ball.radius = 10.0f;
     ball.active = false;
-    ball.position = (Vector2) {player.position.x + player.size.x / 2 - ball.radius,
-                               player.position.y - ball.radius * 2};
-    ball.speed = (Vector2) {0.0f, 0.0f};
+    ball.position = Vector2{player.position.x + player.size.x / 2 - ball.radius,
+                            player.position.y - ball.radius * 2};
+    ball.speed = Vector2{0.0f, 0.0f};
 
     // Initialize bricks
     brickScale = GetScreenWidthFloat() / ((float) BRICKS_PER_LINE * (float) texBrick.width);
     for (int j = 0; j < BRICKS_LINES; ++j) {
         for (int i = 0; i < BRICKS_PER_LINE; ++i) {
-            bricks[j][i].size = (Vector2) {(float) texBrick.width * brickScale, (float) texBrick.height * brickScale};
-            bricks[j][i].position = (Vector2) {bricks[j][i].size.x * (float) i,
-                                               BRICKS_POSITION_Y + bricks[j][i].size.y * (float) j};
-            bricks[j][i].bounds = (Rectangle) {bricks[j][i].position.x, bricks[j][i].position.y, bricks[j][i].size.x,
-                                               bricks[j][i].size.y};
+            bricks[j][i].size = Vector2{(float) texBrick.width * brickScale, (float) texBrick.height * brickScale};
+            bricks[j][i].position = Vector2{bricks[j][i].size.x * (float) i,
+                                            BRICKS_POSITION_Y + bricks[j][i].size.y * (float) j};
+            bricks[j][i].bounds = Rectangle{bricks[j][i].position.x, bricks[j][i].position.y, bricks[j][i].size.x,
+                                            bricks[j][i].size.y};
             bricks[j][i].resistance = BRICK_RESISTANCE;
             bricks[j][i].active = true;
             ++numActiveBricks;
@@ -205,7 +205,7 @@ void UpdateDrawFrame() {
             if (gameResult != -1) {
                 gameResult = -1;
                 numActiveBricks = 0;
-                for (int j = 0; j < BRICKS_LINES; ++j) {
+                for (int j = 0; j < BRICKS_LINES; ++j) { // NOLINT(*-loop-convert)
                     for (int i = 0; i < BRICKS_PER_LINE; ++i) {
                         bricks[j][i].resistance = BRICK_RESISTANCE;
                         bricks[j][i].active = true;
@@ -213,7 +213,7 @@ void UpdateDrawFrame() {
                     }
                 }
                 player.lives = NUM_PLAYER_LIVES;
-                player.position = (Vector2) {GetScreenWidthFloat() / 2.0f, GetScreenHeightFloat() * 7.0f / 8.0f};
+                player.position = Vector2{GetScreenWidthFloat() / 2.0f, GetScreenHeightFloat() * 7.0f / 8.0f};
                 ball.position.x = player.position.x + player.size.x / 2 - ball.radius;
                 ball.position.y = player.position.y - ball.radius * 2;
                 ball.active = false;
@@ -235,7 +235,7 @@ void UpdateDrawFrame() {
                 break;
             }
             if (IsKeyPressed('W')) {
-                for (int j = 0; j < BRICKS_LINES; ++j) {
+                for (int j = 0; j < BRICKS_LINES; ++j) { // NOLINT(*-loop-convert)
                     for (int i = 0; i < BRICKS_PER_LINE; ++i) {
                         bricks[j][i].active = false;
                         --numActiveBricks;
@@ -253,7 +253,7 @@ void UpdateDrawFrame() {
                 break;
             }
             if (IsKeyPressed('K')) {
-                for (int j = 0; j < BRICKS_LINES; ++j) {
+                for (int j = 0; j < BRICKS_LINES; ++j) { // NOLINT(*-loop-convert)
                     for (int i = 0; i < BRICKS_PER_LINE; ++i) {
                         int rand = GetRandomValue(0, 10);
                         if (rand < 5 && bricks[j][i].active) {
@@ -279,7 +279,7 @@ void UpdateDrawFrame() {
                     player.position.x = GetScreenWidthFloat() - player.size.x;
                 }
 
-                player.bounds = (Rectangle) {player.position.x, player.position.y, player.size.x, player.size.y};
+                player.bounds = Rectangle{player.position.x, player.position.y, player.size.x, player.size.y};
 
                 if (ball.active) {
                     // Ball movement logic
@@ -300,7 +300,7 @@ void UpdateDrawFrame() {
                     }
 
                     // Collision logic: ball vs. player
-                    Vector2 ballCenter = (Vector2) {ball.position.x + ball.radius, ball.position.y + ball.radius};
+                    Vector2 ballCenter = Vector2{ball.position.x + ball.radius, ball.position.y + ball.radius};
                     if (CheckCollisionCircleRec(ballCenter, ball.radius, player.bounds)) {
                         if (ball.speed.y > 0) { ball.speed.y *= -1; }
                         ball.speed.x =
@@ -309,7 +309,7 @@ void UpdateDrawFrame() {
                     }
 
                     // Collision logic: ball vs. bricks
-                    for (int j = 0; j < BRICKS_LINES; ++j) {
+                    for (int j = 0; j < BRICKS_LINES; ++j) { // NOLINT(*-loop-convert)
                         for (int i = 0; i < BRICKS_PER_LINE; ++i) {
                             if (bricks[j][i].active) {
                                 if (CheckCollisionCircleRec(ballCenter, ball.radius, bricks[j][i].bounds)) {
@@ -352,7 +352,7 @@ void UpdateDrawFrame() {
                     ball.position.x = player.position.x + player.size.x / 2 - ball.radius;
                     if (IsKeyPressed(KEY_SPACE)) {
                         const float angle = (float) GetRandomValue(-300, 300) / 10.0f;
-                        ball.speed = Vector2Rotate((Vector2) {0.0f, -5.0f}, angle * DEG2RAD);
+                        ball.speed = Vector2Rotate(Vector2{0.0f, -5.0f}, angle * DEG2RAD);
                         ball.active = true;
                     }
                 }
@@ -388,7 +388,7 @@ void UpdateDrawFrame() {
                 break;
             }
             case TITLE: {
-                DrawTextEx(font, "BLOCKS", (Vector2) {100, 80}, 160, 10, MAROON);
+                DrawTextEx(font, "BLOCKS", Vector2{100, 80}, 160, 10, MAROON);
 
                 if ((framesCounter / 30) % 2) {
                     DrawText("PRESS [ENTER] OR TAP TO START",
@@ -435,7 +435,7 @@ void UpdateDrawFrame() {
                     if (numActiveBricks > BRICKS_PER_LINE * BRICKS_LINES / 2) {
                         DrawTextEx(font,
                                    "YOU LOSE!",
-                                   (Vector2) {
+                                   Vector2{
                                            GetScreenWidthFloat() / 2.0f -
                                            MeasureTextEx(font, "YOU_LOSE!", 80, 5).x / 2.0f,
                                            100},
@@ -445,7 +445,7 @@ void UpdateDrawFrame() {
                     } else {
                         DrawTextEx(font,
                                    "GAME OVER",
-                                   (Vector2) {
+                                   Vector2{
                                            GetScreenWidthFloat() / 2.0f -
                                            MeasureTextEx(font, "GAME OVER", 80, 5).x / 2.0f,
                                            100},
@@ -455,7 +455,7 @@ void UpdateDrawFrame() {
                 } else if (gameResult == 1) {
                     DrawTextEx(font,
                                "YOU WIN!",
-                               (Vector2) {
+                               Vector2{
                                        GetScreenWidthFloat() / 2.0f - MeasureTextEx(font, "YOU WIN!", 80, 5).x / 2.0f,
                                        100},
                                80,
@@ -463,7 +463,7 @@ void UpdateDrawFrame() {
                 } else {
                     DrawTextEx(font,
                                "WHAT HAPPENED?",
-                               (Vector2) {
+                               Vector2{
                                        GetScreenWidthFloat() / 2.0f -
                                        MeasureTextEx(font, "WHAT HAPPENED?", 80, 5).x / 2.0f,
                                        100},
