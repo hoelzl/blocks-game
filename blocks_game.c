@@ -58,7 +58,7 @@ int main() {
     InitWindow(screenWidth, screenHeight, "PROJECT: BLOCKS GAME");
 
     // Initialize player
-    player.position = (Vector2) {GetScreenWidth() / 2.0f, GetScreenHeight() - 50.0f};
+    player.position = (Vector2) {GetScreenWidth() / 2.0f, GetScreenHeight() * 7.0f / 8.0f};
     player.speed = (Vector2) {8.0f, 8.0f};
     player.size = (Vector2) {100, 24};
     player.lives = PLAYER_LIVES;
@@ -66,7 +66,7 @@ int main() {
     // Initialize ball
     ball.radius = 10.0f;
     ball.active = false;
-    ball.position = (Vector2) {player.position.x + player.size.x / 2, player.position.y - ball.radius * 2};
+    ball.position = (Vector2) {player.position.x + player.size.x / 2, player.position.y - ball.radius - 1.0f};
     ball.speed = (Vector2) {4.0f, 4.0f};
 
     // Initialize bricks
@@ -129,11 +129,54 @@ void UpdateDrawFrame() {
             break;
         }
         case GAMEPLAY: {
+            if (IsKeyPressed('P')) gamePaused = !gamePaused;
             if (!gamePaused) {
-                // TODO: Gameplay logic!
-            }
-            if (IsKeyPressed(KEY_ENTER) || IsGestureDetected(GESTURE_TAP)) {
-                screen = ENDING;
+                if (IsKeyDown(KEY_LEFT)) player.position.x -= player.speed.x;
+                if (IsKeyDown(KEY_RIGHT)) player.position.x += player.speed.x;
+
+                if ((player.position.x) <= 0) { player.position.x = 0; }
+                if ((player.position.x + player.size.x) >= GetScreenWidth()) {
+                    player.position.x = GetScreenWidth() - player.size.x;
+                }
+
+                player.bounds = (Rectangle) {player.position.x, player.position.y, player.size.x, player.size.y};
+
+                if (ball.active) {
+                    ball.position.x += ball.speed.x;
+                    ball.position.y += ball.speed.y;
+
+                    if ((ball.position.x + ball.radius) >= GetScreenWidth()) {
+                        ball.position.x = GetScreenWidth() - ball.radius;
+                        ball.speed.x *= -1;
+                    } else if ((ball.position.x - ball.radius) <= 0) {
+                        ball.position.x = ball.radius;
+                        ball.speed.x *= -1;
+                    }
+
+                    if ((ball.position.y - ball.radius) <= 0) {
+                        ball.position.y = ball.radius;
+                        ball.speed.y *= -1;
+                    } else if ((ball.position.y + ball.radius) >= GetScreenHeight()) {
+                        ball.position.x = player.position.x + player.size.x / 2;
+                        ball.position.y = player.position.y - ball.radius - 1.0f;
+                        ball.speed = (Vector2) {0.0f, 0.0f};
+                        ball.active = false;
+
+                        --player.lives;
+                    }
+                    if (player.lives <= 0) {
+                        screen = ENDING;
+                        player.lives = 5;
+                        framesCounter = 0;
+                    }
+                } else {
+                    // Reset ball position
+                    ball.position.x = player.position.x + player.size.x / 2;
+                    if (IsKeyPressed(KEY_SPACE)) {
+                        ball.active = true;
+                        ball.speed = (Vector2) {0.0f, -5.0f};
+                    }
+                }
             }
             break;
         }
@@ -156,16 +199,15 @@ void UpdateDrawFrame() {
 
             case LOGO: {
                 DrawText("LOGO SCREEN", 20, 20, 40, LIGHTGRAY);
-                DrawText("WAIT for 3 SECONDS...", 290, 220, 20, GRAY);
+                DrawText("WAIT FOR 3 SECONDS...", 290, 220, 20, GRAY);
                 break;
             }
             case TITLE: {
-                DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), GREEN);
                 DrawText("TITLE SCREEN", 20, 20, 40, DARKGREEN);
 
                 if ((framesCounter / 30) % 2) {
-                    DrawText("PRESS [ENTER] or TAP to START",
-                             GetScreenWidth() / 2 - MeasureText("PRESS [ENTER] or TAP to START", 20) / 2,
+                    DrawText("PRESS [ENTER] OR TAP TO START",
+                             GetScreenWidth() / 2 - MeasureText("PRESS [ENTER] OR TAP TO START", 20) / 2,
                              GetScreenHeight() / 2 + 60, 20,
                              DARKGRAY);
                 }
@@ -200,11 +242,10 @@ void UpdateDrawFrame() {
                 break;
             }
             case ENDING: {
-                DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), BLUE);
                 DrawText("ENDING SCREEN", 20, 20, 40, DARKBLUE);
                 if ((framesCounter / 30) % 2 == 0) {
-                    DrawText("PRESS ENTER or TAP to RETURN to TITLE SCREEN",
-                             GetScreenWidth() / 2 - MeasureText("Press ENTER or TAP to RETURN to TITLE SCREEN", 20) / 2,
+                    DrawText("PRESS [ENTER] OR TAP TO PLAY AGAIN",
+                             GetScreenWidth() / 2 - MeasureText("PRESS [ENTER] OR TAP TO PLAY AGAIN", 20) / 2,
                              GetScreenHeight() / 2 + 80, 20, DARKBLUE);
                 }
                 break;
