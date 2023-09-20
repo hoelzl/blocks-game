@@ -1,4 +1,3 @@
-#pragma ide diagnostic ignored "cppcoreguidelines-narrowing-conversions"
 /***********************************************************************************
  * Example based on the raylib-intro-course, with support for emscripten.
  * CMake support is based on the CMakeLists.txt file from the raylib project.
@@ -8,16 +7,33 @@
 
 #include <stdio.h>
 #include "raylib.h"
+#include "raymath.h"
 
 #if defined(PLATFORM_WEB)
 #include <emscripten/emscripten.h>
 #endif
 
-#define PLAYER_LIVES 5
+#define DEBUG_GAME_FLOW
+
+#ifdef DEBUG_GAME_FLOW
+#define LOGO_SCREEN_DURATION_IN_FRAMES 60
+#define NUM_PLAYER_LIVES 2
+#define BRICKS_LINES 2
+#define BRICKS_PER_LINE 8
+#define MASTER_VOLUME 0.0f
+#else
+#define LOGO_SCREEN_DURATION_IN_FRAMES 180
+#define NUM_PLAYER_LIVES 5
 #define BRICKS_LINES 5
 #define BRICKS_PER_LINE 20
+#define MASTER_VOLUME 0.2f
+#endif
+
 #define BRICKS_POSITION_Y 50
-#define AUDIO_VOLUME 0.2f
+#define BRICK_RESISTANCE 1
+
+#define SOUND_FX_VOLUME 0.2f
+#define MUSIC_STREAM_VOLUME 0.8f
 
 typedef enum GameScreen {
     LOGO, TITLE, GAMEPLAY, ENDING
@@ -50,6 +66,8 @@ GameScreen screen = LOGO;
 Player player = {0};
 Ball ball = {0};
 Brick bricks[BRICKS_LINES][BRICKS_PER_LINE] = {0};
+float brickScale = 1.0f;
+int numActiveBricks = 0;
 
 Texture2D texLogo;
 Texture2D texBall;
@@ -65,6 +83,14 @@ Sound fxExplode;
 Music music;
 
 void UpdateDrawFrame();     // Update and Draw one frame
+
+float GetScreenHeightFloat() {
+    return (float) GetScreenHeight();
+}
+
+float GetScreenWidthFloat() {
+    return (float) GetScreenWidth();
+}
 
 int main() {
     const int screenWidth = 800;
@@ -82,27 +108,27 @@ int main() {
 
     InitAudioDevice();
 
-    SetMasterVolume(AUDIO_VOLUME);
+    SetMasterVolume(MASTER_VOLUME);
 
     fxStart = LoadSound("resources/start.wav");
     fxBounce = LoadSound("resources/bounce.wav");
     fxExplode = LoadSound("resources/explosion.wav");
 
-//    SetSoundVolume(fxStart, AUDIO_VOLUME);
-//    SetSoundVolume(fxBounce, AUDIO_VOLUME);
-//    SetSoundVolume(fxExplode, AUDIO_VOLUME);
+    SetSoundVolume(fxStart, SOUND_FX_VOLUME);
+    SetSoundVolume(fxBounce, SOUND_FX_VOLUME);
+    SetSoundVolume(fxExplode, SOUND_FX_VOLUME);
 
     music = LoadMusicStream("resources/go-wild.mp3");
 
-//    SetMusicVolume(music, AUDIO_VOLUME);
+    SetMusicVolume(music, MUSIC_STREAM_VOLUME);
 
     PlayMusicStream(music);
 
     // Initialize player
-    player.position = (Vector2) {GetScreenWidth() / 2.0f, GetScreenHeight() * 7.0f / 8.0f};
+    player.position = (Vector2) {GetScreenWidthFloat() / 2.0f, GetScreenHeightFloat() * 7.0f / 8.0f};
     player.speed = (Vector2) {8.0f, 8.0f};
     player.size = (Vector2) {100, 24};
-    player.lives = PLAYER_LIVES;
+    player.lives = NUM_PLAYER_LIVES;
 
     // Initialize ball
     ball.radius = 10.0f;
@@ -112,13 +138,17 @@ int main() {
     ball.speed = (Vector2) {0.0f, 0.0f};
 
     // Initialize bricks
+    brickScale = GetScreenWidthFloat() / ((float) BRICKS_PER_LINE * (float) texBrick.width);
     for (int j = 0; j < BRICKS_LINES; ++j) {
         for (int i = 0; i < BRICKS_PER_LINE; ++i) {
-            bricks[j][i].size = (Vector2) {(float) GetScreenWidth() / BRICKS_PER_LINE, 20};
-            bricks[j][i].position = (Vector2) {bricks[j][i].size.x * i, BRICKS_POSITION_Y + bricks[j][i].size.y * j};
+            bricks[j][i].size = (Vector2) {(float) texBrick.width * brickScale, (float) texBrick.height * brickScale};
+            bricks[j][i].position = (Vector2) {bricks[j][i].size.x * (float) i,
+                                               BRICKS_POSITION_Y + bricks[j][i].size.y * (float) j};
             bricks[j][i].bounds = (Rectangle) {bricks[j][i].position.x, bricks[j][i].position.y, bricks[j][i].size.x,
                                                bricks[j][i].size.y};
+            bricks[j][i].resistance = BRICK_RESISTANCE;
             bricks[j][i].active = true;
+            ++numActiveBricks;
         }
     }
 
@@ -164,13 +194,31 @@ void UpdateDrawFrame() {
         case LOGO: {
             ++framesCounter;
 
-            if (framesCounter > 180) {
+            if (framesCounter > LOGO_SCREEN_DURATION_IN_FRAMES) {
                 screen = TITLE;
                 framesCounter = 0;
             }
             break;
         }
         case TITLE: {
+            // Reset everything if we come back here after a game over
+            if (gameResult != -1) {
+                gameResult = -1;
+                numActiveBricks = 0;
+                for (int j = 0; j < BRICKS_LINES; ++j) {
+                    for (int i = 0; i < BRICKS_PER_LINE; ++i) {
+                        bricks[j][i].resistance = BRICK_RESISTANCE;
+                        bricks[j][i].active = true;
+                        ++numActiveBricks;
+                    }
+                }
+                player.lives = NUM_PLAYER_LIVES;
+                player.position = (Vector2) {GetScreenWidthFloat() / 2.0f, GetScreenHeightFloat() * 7.0f / 8.0f};
+                ball.position.x = player.position.x + player.size.x / 2 - ball.radius;
+                ball.position.y = player.position.y - ball.radius * 2;
+                ball.active = false;
+            }
+
             ++framesCounter;
             if (IsKeyPressed(KEY_ENTER) || IsGestureDetected(GESTURE_TAP)) {
                 screen = GAMEPLAY;
@@ -181,16 +229,54 @@ void UpdateDrawFrame() {
         case GAMEPLAY: {
             if (IsKeyPressed('P')) { gamePaused = !gamePaused; }
             if (IsKeyPressed('Q')) {
+                player.lives = 0;
+                gameResult = numActiveBricks == 0 ? 1 : 0;
                 screen = ENDING;
                 break;
             }
+            if (IsKeyPressed('W')) {
+                for (int j = 0; j < BRICKS_LINES; ++j) {
+                    for (int i = 0; i < BRICKS_PER_LINE; ++i) {
+                        bricks[j][i].active = false;
+                        --numActiveBricks;
+                    }
+                }
+                player.lives = 0;
+                gameResult = 1;
+                screen = ENDING;
+                break;
+            }
+            if (IsKeyPressed('L')) {
+                player.lives = 0;
+                gameResult = 0;
+                screen = ENDING;
+                break;
+            }
+            if (IsKeyPressed('K')) {
+                for (int j = 0; j < BRICKS_LINES; ++j) {
+                    for (int i = 0; i < BRICKS_PER_LINE; ++i) {
+                        int rand = GetRandomValue(0, 10);
+                        if (rand < 5 && bricks[j][i].active) {
+                            bricks[j][i].resistance = 0;
+                            bricks[j][i].active = false;
+                            --numActiveBricks;
+                            if (numActiveBricks == 0) {
+                                screen = ENDING;
+                                gameResult = 1;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
             if (!gamePaused) {
                 if (IsKeyDown(KEY_LEFT)) player.position.x -= player.speed.x;
                 if (IsKeyDown(KEY_RIGHT)) player.position.x += player.speed.x;
 
                 if ((player.position.x) <= 0) { player.position.x = 0; }
-                if ((player.position.x + player.size.x) >= GetScreenWidth()) {
-                    player.position.x = GetScreenWidth() - player.size.x;
+                if ((player.position.x + player.size.x) >= GetScreenWidthFloat()) {
+                    player.position.x = GetScreenWidthFloat() - player.size.x;
                 }
 
                 player.bounds = (Rectangle) {player.position.x, player.position.y, player.size.x, player.size.y};
@@ -201,8 +287,8 @@ void UpdateDrawFrame() {
                     ball.position.y += ball.speed.y;
 
                     // Collision logic: ball vs. screen limits
-                    if ((ball.position.x + 2 * ball.radius) >= GetScreenWidth()) {
-                        ball.position.x = GetScreenWidth() - 2 * ball.radius;
+                    if ((ball.position.x + 2 * ball.radius) >= GetScreenWidthFloat()) {
+                        ball.position.x = GetScreenWidthFloat() - 2 * ball.radius;
                         ball.speed.x *= -1;
                     } else if (ball.position.x <= 0) {
                         ball.speed.x *= -1;
@@ -227,9 +313,20 @@ void UpdateDrawFrame() {
                         for (int i = 0; i < BRICKS_PER_LINE; ++i) {
                             if (bricks[j][i].active) {
                                 if (CheckCollisionCircleRec(ballCenter, ball.radius, bricks[j][i].bounds)) {
-                                    bricks[j][i].active = false;
+                                    --bricks[j][i].resistance;
+                                    if (bricks[j][i].resistance <= 0) {
+                                        bricks[j][i].active = false;
+                                        --numActiveBricks;
+                                        PlaySound(fxExplode);
+                                        if (numActiveBricks == 0) {
+                                            screen = ENDING;
+                                            gameResult = 1;
+                                        }
+                                    } else {
+                                        PlaySound(fxBounce);
+                                    }
+
                                     ball.speed.y *= -1;
-                                    PlaySound(fxExplode);
                                     break;
                                 }
                             }
@@ -237,7 +334,7 @@ void UpdateDrawFrame() {
                     }
 
                     // Game ending logic
-                    if ((ballCenter.y + ball.radius) >= GetScreenHeight()) {
+                    if ((ballCenter.y + ball.radius) >= GetScreenHeightFloat()) {
                         ball.position.x = player.position.x + player.size.x / 2 - ball.radius;
                         ball.position.y = player.position.y - ball.radius * 2;
                         ball.active = false;
@@ -246,23 +343,23 @@ void UpdateDrawFrame() {
 
                     if (player.lives <= 0) {
                         screen = ENDING;
-                        player.lives = 5;
+                        player.lives = NUM_PLAYER_LIVES;
+                        gameResult = numActiveBricks == 0 ? 1 : 0;
                         framesCounter = 0;
                     }
                 } else {
                     // Reset ball position
                     ball.position.x = player.position.x + player.size.x / 2 - ball.radius;
                     if (IsKeyPressed(KEY_SPACE)) {
+                        const float angle = (float) GetRandomValue(-300, 300) / 10.0f;
+                        ball.speed = Vector2Rotate((Vector2) {0.0f, -5.0f}, angle * DEG2RAD);
                         ball.active = true;
-                        ball.speed = (Vector2) {0.0f, -5.0f};
                     }
                 }
             }
             break;
         }
         case ENDING: {
-            // TODO: Update END screen data here!
-
             ++framesCounter;
 
             if (IsKeyPressed(KEY_ENTER) || IsGestureDetected(GESTURE_TAP)) {
@@ -284,8 +381,10 @@ void UpdateDrawFrame() {
                             GetScreenHeight() / 2 - texLogo.height / 2,
                             WHITE);
                 char text[80] = {0};
-                sprintf(text, "WAIT for %.1f SECONDS...", 3.0f - framesCounter / 60.0f);
-                DrawText(text, GetScreenWidth() / 2 - MeasureText(text, 2), GetScreenHeight() * 7.0 / 8.0, 20, GRAY);
+                sprintf_s(text, 80, "WAIT for %.1f SECONDS...", 3.0f - (float) framesCounter / 60.0f);
+                DrawText(text, GetScreenWidth() / 2 - MeasureText(text, 2), GetScreenHeight() * 7 / 8,
+                         20,
+                         GRAY);
                 break;
             }
             case TITLE: {
@@ -300,33 +399,14 @@ void UpdateDrawFrame() {
                 break;
             }
             case GAMEPLAY: {
-#ifdef DRAW_SIMPLE_SHAPES
                 // Draw bricks
                 for (int j = 0; j < BRICKS_LINES; ++j) {
                     for (int i = 0; i < BRICKS_PER_LINE; ++i) {
                         if (bricks[j][i].active) {
                             if ((i + j) % 2 == 0) {
-                                DrawRectangleV(bricks[j][i].position, bricks[j][i].size, GRAY);
+                                DrawTextureEx(texBrick, bricks[j][i].position, 0.0f, brickScale, GRAY);
                             } else {
-                                DrawRectangleV(bricks[j][i].position, bricks[j][i].size, DARKGRAY);
-                            }
-                        }
-                    }
-                }
-
-                // Draw player
-                DrawRectangleV(player.position, player.size, BLACK);
-                // Draw ball
-                DrawCircleV(ball.position, ball.radius, MAROON);
-#else
-                // Draw bricks
-                for (int j = 0; j < BRICKS_LINES; ++j) {
-                    for (int i = 0; i < BRICKS_PER_LINE; ++i) {
-                        if (bricks[j][i].active) {
-                            if ((i + j) % 2 == 0) {
-                                DrawTextureEx(texBrick, bricks[j][i].position, 0.0f, 1.0f, GRAY);
-                            } else {
-                                DrawTextureEx(texBrick, bricks[j][i].position, 0.0f, 1.0f, DARKGRAY);
+                                DrawTextureEx(texBrick, bricks[j][i].position, 0.0f, brickScale, DARKGRAY);
                             }
                         }
                     }
@@ -336,7 +416,7 @@ void UpdateDrawFrame() {
                 DrawTextureEx(texPaddle, player.position, 0.0f, 1.0f, WHITE);
                 // Draw ball
                 DrawTextureEx(texBall, ball.position, 0.0f, 1.0f, MAROON);
-#endif
+
                 // Draw GUI: player lives
                 for (int i = 0; i < player.lives; ++i) {
                     DrawRectangle(20 + 40 * i, GetScreenHeight() - 30, 35, 10, LIGHTGRAY);
@@ -351,13 +431,46 @@ void UpdateDrawFrame() {
                 break;
             }
             case ENDING: {
-                DrawTextEx(font,
-                           "GAME OVER",
-                           (Vector2) {
-                                   GetScreenWidth() / 2.0 - MeasureText("GAME OVER", 80) / 2.0,
-                                   100},
-                           80,
-                           10, MAROON);
+                if (gameResult == 0) {
+                    if (numActiveBricks > BRICKS_PER_LINE * BRICKS_LINES / 2) {
+                        DrawTextEx(font,
+                                   "YOU LOSE!",
+                                   (Vector2) {
+                                           GetScreenWidthFloat() / 2.0f -
+                                           MeasureTextEx(font, "YOU_LOSE!", 80, 5).x / 2.0f,
+                                           100},
+                                   80,
+                                   5, MAROON);
+
+                    } else {
+                        DrawTextEx(font,
+                                   "GAME OVER",
+                                   (Vector2) {
+                                           GetScreenWidthFloat() / 2.0f -
+                                           MeasureTextEx(font, "GAME OVER", 80, 5).x / 2.0f,
+                                           100},
+                                   80,
+                                   5, MAROON);
+                    }
+                } else if (gameResult == 1) {
+                    DrawTextEx(font,
+                               "YOU WIN!",
+                               (Vector2) {
+                                       GetScreenWidthFloat() / 2.0f - MeasureTextEx(font, "YOU WIN!", 80, 5).x / 2.0f,
+                                       100},
+                               80,
+                               5, MAROON);
+                } else {
+                    DrawTextEx(font,
+                               "WHAT HAPPENED?",
+                               (Vector2) {
+                                       GetScreenWidthFloat() / 2.0f -
+                                       MeasureTextEx(font, "WHAT HAPPENED?", 80, 5).x / 2.0f,
+                                       100},
+                               80,
+                               5, MAROON);
+                }
+
                 if ((framesCounter / 30) % 2 == 0) {
                     DrawText("PRESS [ENTER] TO PLAY AGAIN",
                              GetScreenWidth() / 2 - MeasureText("PRESS [ENTER] TO PLAY AGAIN", 20) / 2,
@@ -368,5 +481,4 @@ void UpdateDrawFrame() {
         }
     }
     EndDrawing();
-    //----------------------------------------------------------------------------------
 }
