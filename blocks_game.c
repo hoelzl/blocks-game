@@ -6,6 +6,7 @@
  * See <https://github.com/raysan5/raylib-intro-course> for the tutorial.
  */
 
+#include <stdio.h>
 #include "raylib.h"
 
 #if defined(PLATFORM_WEB)
@@ -67,7 +68,7 @@ int main() {
     ball.radius = 10.0f;
     ball.active = false;
     ball.position = (Vector2) {player.position.x + player.size.x / 2, player.position.y - ball.radius - 1.0f};
-    ball.speed = (Vector2) {4.0f, 4.0f};
+    ball.speed = (Vector2) {0.0f, 0.0f};
 
     // Initialize bricks
     for (int j = 0; j < BRICKS_LINES; ++j) {
@@ -93,17 +94,11 @@ int main() {
     }
 #endif
 
-    // De-Initialization
-    //--------------------------------------------------------------------------------------
     CloseWindow();        // Close window and OpenGL context
-    //--------------------------------------------------------------------------------------
 
     return 0;
 }
 
-//----------------------------------------------------------------------------------
-// Module Functions Definition
-//----------------------------------------------------------------------------------
 void UpdateDrawFrame() {
 
     static int framesCounter = 0;
@@ -145,25 +140,43 @@ void UpdateDrawFrame() {
                     ball.position.x += ball.speed.x;
                     ball.position.y += ball.speed.y;
 
-                    if ((ball.position.x + ball.radius) >= GetScreenWidth()) {
-                        ball.position.x = GetScreenWidth() - ball.radius;
-                        ball.speed.x *= -1;
-                    } else if ((ball.position.x - ball.radius) <= 0) {
-                        ball.position.x = ball.radius;
+                    // Collision logic: ball vs. screen limits
+                    if ((ball.position.x + ball.radius) >= GetScreenWidth() || (ball.position.x - ball.radius) <= 0) {
                         ball.speed.x *= -1;
                     }
 
                     if ((ball.position.y - ball.radius) <= 0) {
-                        ball.position.y = ball.radius;
                         ball.speed.y *= -1;
-                    } else if ((ball.position.y + ball.radius) >= GetScreenHeight()) {
+                    }
+
+                    // Collision logic: ball vs. player
+                    if (CheckCollisionCircleRec(ball.position, ball.radius, player.bounds)) {
+                        ball.speed.y *= -1;
+                        ball.speed.x =
+                                (ball.position.x - player.position.x - player.size.x / 2) / (player.size.x / 2) * 5.0f;
+                    }
+
+                    // Collision logic: ball vs. bricks
+                    for (int j = 0; j < BRICKS_LINES; ++j) {
+                        for (int i = 0; i < BRICKS_PER_LINE; ++i) {
+                            if (bricks[j][i].active) {
+                                if (CheckCollisionCircleRec(ball.position, ball.radius, bricks[j][i].bounds)) {
+                                    bricks[j][i].active = false;
+                                    ball.speed.y *= -1;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    // Game ending logic
+                    if ((ball.position.y + ball.radius) >= GetScreenHeight()) {
                         ball.position.x = player.position.x + player.size.x / 2;
                         ball.position.y = player.position.y - ball.radius - 1.0f;
-                        ball.speed = (Vector2) {0.0f, 0.0f};
                         ball.active = false;
-
-                        --player.lives;
+                        player.lives--;
                     }
+
                     if (player.lives <= 0) {
                         screen = ENDING;
                         player.lives = 5;
@@ -199,7 +212,9 @@ void UpdateDrawFrame() {
 
             case LOGO: {
                 DrawText("LOGO SCREEN", 20, 20, 40, LIGHTGRAY);
-                DrawText("WAIT FOR 3 SECONDS...", 290, 220, 20, GRAY);
+                char text[80] = {0};
+                sprintf(text, "WAIT for %.1f SECONDS...", 3.0f - framesCounter / 60.0f);
+                DrawText(text, GetScreenWidth() / 2 - MeasureText(text, 2), GetScreenHeight() / 2 + 60, 20, GRAY);
                 break;
             }
             case TITLE: {
