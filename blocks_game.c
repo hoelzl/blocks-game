@@ -50,6 +50,11 @@ Player player = {0};
 Ball ball = {0};
 Brick bricks[BRICKS_LINES][BRICKS_PER_LINE] = {0};
 
+Texture2D texLogo;
+Texture2D texBall;
+Texture2D texPaddle;
+Texture2D texBrick;
+
 void UpdateDrawFrame();     // Update and Draw one frame
 
 int main() {
@@ -57,6 +62,12 @@ int main() {
     const int screenHeight = 450;
 
     InitWindow(screenWidth, screenHeight, "PROJECT: BLOCKS GAME");
+
+    // Note: Load resources after window initialization (OpenGL context is required)
+    texLogo = LoadTexture("resources/raylib_logo.png");
+    texBall = LoadTexture("resources/ball.png");
+    texPaddle = LoadTexture("resources/paddle.png");
+    texBrick = LoadTexture("resources/brick.png");
 
     // Initialize player
     player.position = (Vector2) {GetScreenWidth() / 2.0f, GetScreenHeight() * 7.0f / 8.0f};
@@ -67,7 +78,8 @@ int main() {
     // Initialize ball
     ball.radius = 10.0f;
     ball.active = false;
-    ball.position = (Vector2) {player.position.x + player.size.x / 2, player.position.y - ball.radius - 1.0f};
+    ball.position = (Vector2) {player.position.x + player.size.x / 2 - ball.radius,
+                               player.position.y - ball.radius * 2};
     ball.speed = (Vector2) {0.0f, 0.0f};
 
     // Initialize bricks
@@ -93,6 +105,10 @@ int main() {
         UpdateDrawFrame();
     }
 #endif
+    // Unload textures
+    UnloadTexture(texBall);
+    UnloadTexture(texPaddle);
+    UnloadTexture(texBrick);
 
     CloseWindow();        // Close window and OpenGL context
 
@@ -137,30 +153,36 @@ void UpdateDrawFrame() {
                 player.bounds = (Rectangle) {player.position.x, player.position.y, player.size.x, player.size.y};
 
                 if (ball.active) {
+                    // Ball movement logic
                     ball.position.x += ball.speed.x;
                     ball.position.y += ball.speed.y;
 
                     // Collision logic: ball vs. screen limits
-                    if ((ball.position.x + ball.radius) >= GetScreenWidth() || (ball.position.x - ball.radius) <= 0) {
+                    if ((ball.position.x + 2 * ball.radius) >= GetScreenWidth()) {
+                        ball.position.x = GetScreenWidth() - 2 * ball.radius;
                         ball.speed.x *= -1;
+                    } else if (ball.position.x <= 0) {
+                        ball.speed.x *= -1;
+                        ball.position.x = 0;
                     }
 
-                    if ((ball.position.y - ball.radius) <= 0) {
+                    if (ball.position.y <= 0) {
                         ball.speed.y *= -1;
                     }
 
                     // Collision logic: ball vs. player
-                    if (CheckCollisionCircleRec(ball.position, ball.radius, player.bounds)) {
-                        ball.speed.y *= -1;
+                    Vector2 ballCenter = (Vector2) {ball.position.x + ball.radius, ball.position.y + ball.radius};
+                    if (CheckCollisionCircleRec(ballCenter, ball.radius, player.bounds)) {
+                        if (ball.speed.y > 0) { ball.speed.y *= -1; }
                         ball.speed.x =
-                                (ball.position.x - player.position.x - player.size.x / 2) / (player.size.x / 2) * 5.0f;
+                                (ballCenter.x - player.position.x - player.size.x / 2) / (player.size.x / 2) * 5.0f;
                     }
 
                     // Collision logic: ball vs. bricks
                     for (int j = 0; j < BRICKS_LINES; ++j) {
                         for (int i = 0; i < BRICKS_PER_LINE; ++i) {
                             if (bricks[j][i].active) {
-                                if (CheckCollisionCircleRec(ball.position, ball.radius, bricks[j][i].bounds)) {
+                                if (CheckCollisionCircleRec(ballCenter, ball.radius, bricks[j][i].bounds)) {
                                     bricks[j][i].active = false;
                                     ball.speed.y *= -1;
                                     break;
@@ -170,9 +192,9 @@ void UpdateDrawFrame() {
                     }
 
                     // Game ending logic
-                    if ((ball.position.y + ball.radius) >= GetScreenHeight()) {
-                        ball.position.x = player.position.x + player.size.x / 2;
-                        ball.position.y = player.position.y - ball.radius - 1.0f;
+                    if ((ballCenter.y + ball.radius) >= GetScreenHeight()) {
+                        ball.position.x = player.position.x + player.size.x / 2 - ball.radius;
+                        ball.position.y = player.position.y - ball.radius * 2;
                         ball.active = false;
                         player.lives--;
                     }
@@ -184,7 +206,7 @@ void UpdateDrawFrame() {
                     }
                 } else {
                     // Reset ball position
-                    ball.position.x = player.position.x + player.size.x / 2;
+                    ball.position.x = player.position.x + player.size.x / 2 - ball.radius;
                     if (IsKeyPressed(KEY_SPACE)) {
                         ball.active = true;
                         ball.speed = (Vector2) {0.0f, -5.0f};
@@ -211,10 +233,12 @@ void UpdateDrawFrame() {
         switch (screen) {
 
             case LOGO: {
-                DrawText("LOGO SCREEN", 20, 20, 40, LIGHTGRAY);
+                DrawTexture(texLogo, GetScreenWidth() / 2 - texLogo.width / 2,
+                            GetScreenHeight() / 2 - texLogo.height / 2,
+                            WHITE);
                 char text[80] = {0};
                 sprintf(text, "WAIT for %.1f SECONDS...", 3.0f - framesCounter / 60.0f);
-                DrawText(text, GetScreenWidth() / 2 - MeasureText(text, 2), GetScreenHeight() / 2 + 60, 20, GRAY);
+                DrawText(text, GetScreenWidth() / 2 - MeasureText(text, 2), GetScreenHeight() * 7.0 / 8.0, 20, GRAY);
                 break;
             }
             case TITLE: {
@@ -229,9 +253,7 @@ void UpdateDrawFrame() {
                 break;
             }
             case GAMEPLAY: {
-                DrawRectangleV(player.position, player.size, BLACK);
-                DrawCircleV(ball.position, ball.radius, MAROON);
-
+#ifdef DRAW_SIMPLE_SHAPES
                 // Draw bricks
                 for (int j = 0; j < BRICKS_LINES; ++j) {
                     for (int i = 0; i < BRICKS_PER_LINE; ++i) {
@@ -244,13 +266,38 @@ void UpdateDrawFrame() {
                         }
                     }
                 }
+
+                // Draw player
+                DrawRectangleV(player.position, player.size, BLACK);
+                // Draw ball
+                DrawCircleV(ball.position, ball.radius, MAROON);
+#else
+                // Draw bricks
+                for (int j = 0; j < BRICKS_LINES; ++j) {
+                    for (int i = 0; i < BRICKS_PER_LINE; ++i) {
+                        if (bricks[j][i].active) {
+                            if ((i + j) % 2 == 0) {
+                                DrawTextureEx(texBrick, bricks[j][i].position, 0.0f, 1.0f, GRAY);
+                            } else {
+                                DrawTextureEx(texBrick, bricks[j][i].position, 0.0f, 1.0f, DARKGRAY);
+                            }
+                        }
+                    }
+                }
+
+                // Draw player
+                DrawTextureEx(texPaddle, player.position, 0.0f, 1.0f, WHITE);
+                // Draw ball
+                DrawTextureEx(texBall, ball.position, 0.0f, 1.0f, MAROON);
+#endif
                 // Draw GUI: player lives
                 for (int i = 0; i < player.lives; ++i) {
                     DrawRectangle(20 + 40 * i, GetScreenHeight() - 30, 35, 10, LIGHTGRAY);
                 }
+
                 // Draw pause message when required
                 if (gamePaused) {
-                    // DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(RAYWHITE, 0.8f));
+                    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(RAYWHITE, 0.8f));
                     DrawText("GAME PAUSED", GetScreenWidth() / 2 - MeasureText("GAME PAUSED", 40) / 2,
                              GetScreenHeight() / 2 - 40, 40, GRAY);
                 }
