@@ -13,4 +13,9 @@ graciously made available by Ramon Santamaria. I've converted it
 roughly to C++ and modified the implementation to make it more interesting
 to refactor.
 
-The graphics and sound assets are from the same source.
+The graphics and sound-effect assets are from the same source.
+The background audio track is
+[Go Wild](https://pixabay.com/music/drum-n-bass-go-wild-15153/) from
+[Gvidon](https://pixabay.com/users/gvidon-25326719/) used under the
+terms of the
+[Pixabay Content License](https://pixabay.com/service/license-summary/).

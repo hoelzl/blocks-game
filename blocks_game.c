@@ -17,6 +17,7 @@
 #define BRICKS_LINES 5
 #define BRICKS_PER_LINE 20
 #define BRICKS_POSITION_Y 50
+#define AUDIO_VOLUME 0.2f
 
 typedef enum GameScreen {
     LOGO, TITLE, GAMEPLAY, ENDING
@@ -57,6 +58,12 @@ Texture2D texBrick;
 
 Font font;
 
+Sound fxStart;
+Sound fxBounce;
+Sound fxExplode;
+
+Music music;
+
 void UpdateDrawFrame();     // Update and Draw one frame
 
 int main() {
@@ -72,6 +79,24 @@ int main() {
     texBrick = LoadTexture("resources/brick.png");
 
     font = LoadFont("resources/setback.png");
+
+    InitAudioDevice();
+
+    SetMasterVolume(AUDIO_VOLUME);
+
+    fxStart = LoadSound("resources/start.wav");
+    fxBounce = LoadSound("resources/bounce.wav");
+    fxExplode = LoadSound("resources/explosion.wav");
+
+//    SetSoundVolume(fxStart, AUDIO_VOLUME);
+//    SetSoundVolume(fxBounce, AUDIO_VOLUME);
+//    SetSoundVolume(fxExplode, AUDIO_VOLUME);
+
+    music = LoadMusicStream("resources/go-wild.mp3");
+
+//    SetMusicVolume(music, AUDIO_VOLUME);
+
+    PlayMusicStream(music);
 
     // Initialize player
     player.position = (Vector2) {GetScreenWidth() / 2.0f, GetScreenHeight() * 7.0f / 8.0f};
@@ -116,6 +141,14 @@ int main() {
 
     UnloadFont(font);
 
+    UnloadSound(fxStart);
+    UnloadSound(fxBounce);
+    UnloadSound(fxExplode);
+
+    UnloadMusicStream(music);
+
+    CloseAudioDevice();
+
     CloseWindow();        // Close window and OpenGL context
 
     return 0;
@@ -138,10 +171,10 @@ void UpdateDrawFrame() {
             break;
         }
         case TITLE: {
-            // TODO: Update TITLE screen data here!
             ++framesCounter;
             if (IsKeyPressed(KEY_ENTER) || IsGestureDetected(GESTURE_TAP)) {
                 screen = GAMEPLAY;
+                PlaySound(fxStart);
             }
             break;
         }
@@ -186,6 +219,7 @@ void UpdateDrawFrame() {
                         if (ball.speed.y > 0) { ball.speed.y *= -1; }
                         ball.speed.x =
                                 (ballCenter.x - player.position.x - player.size.x / 2) / (player.size.x / 2) * 5.0f;
+                        PlaySound(fxBounce);
                     }
 
                     // Collision logic: ball vs. bricks
@@ -195,6 +229,7 @@ void UpdateDrawFrame() {
                                 if (CheckCollisionCircleRec(ballCenter, ball.radius, bricks[j][i].bounds)) {
                                     bricks[j][i].active = false;
                                     ball.speed.y *= -1;
+                                    PlaySound(fxExplode);
                                     break;
                                 }
                             }
@@ -236,6 +271,8 @@ void UpdateDrawFrame() {
             break;
         }
     }
+
+    UpdateMusicStream(music);
 
     BeginDrawing();
     {
