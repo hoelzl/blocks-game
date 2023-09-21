@@ -26,7 +26,6 @@ class LogoScreen : public ScreenImpl {
 public:
     std::unique_ptr<ScreenImpl> UpdateGameState(App& app) override;
     void DrawFrame(const App& app) const override;
-public:
 };
 
 class TitleScreen : public ScreenImpl {
@@ -39,6 +38,10 @@ class GameplayScreen : public ScreenImpl {
 public:
     std::unique_ptr<ScreenImpl> UpdateGameState(App& app) override;
     void DrawFrame(const App& app) const override;
+
+private:
+    static std::unique_ptr<ScreenImpl> HandleDebugKeys(App& app);
+    static void DrawGui(const App& app);
 };
 
 class EndingScreen : public ScreenImpl {
@@ -49,17 +52,22 @@ public:
 
 class Screen {
 public:
-    static float GetScreenHeightFloat() {
-        return static_cast<float>(GetScreenHeight());
+    template<typename T=int>
+    static T GetHeight() {
+        return static_cast<T>(GetScreenHeight());
     }
 
-    static float GetScreenWidthFloat() {
-        return static_cast<float>(GetScreenWidth());
+    template<typename T=int>
+    static T GetWidth() {
+        return static_cast<T>(GetScreenWidth());
     }
+
+    static void DrawCenteredText(Font font, const char* text, int posY, int fontSize, int spacing, Color color);
+    static void DrawCenteredText(const char* text, int posY, int fontSize, Color color);
+    static void DrawFlashingText(const App& app, const char* text, int posY, int fontSize, Color color);
 
     void UpdateGameState(App& app);
     void DrawFrame(const App& app) const;
-
 private:
     std::unique_ptr<ScreenImpl> screenImpl{std::make_unique<LogoScreen>()};
 };

@@ -61,7 +61,7 @@ void App::RunGameLoop() {
 }
 
 void App::InitializeBricks() {// Initialize bricks
-    brickScale = Screen::GetScreenWidthFloat() / ((float) BRICKS_PER_LINE * (float) texBrick.width);
+    brickScale = Screen::GetWidth<float>() / ((float) BRICKS_PER_LINE * (float) texBrick.width);
     for (int j = 0; j < BRICKS_LINES; ++j) {
         for (int i = 0; i < BRICKS_PER_LINE; ++i) {
             bricks[j][i].size = Vector2{(float) texBrick.width * brickScale, (float) texBrick.height * brickScale};
@@ -85,7 +85,7 @@ void App::InitializeBall() {// Initialize ball
 }
 
 void App::InitializePlayer() {// Initialize player
-    player.position = Vector2{Screen::GetScreenWidthFloat() / 2.0f, Screen::GetScreenHeightFloat() * 7.0f / 8.0f};
+    player.position = Vector2{Screen::GetWidth<float>() / 2.0f, Screen::GetHeight<float>() * 7.0f / 8.0f};
     player.speed = Vector2{8.0f, 8.0f};
     player.size = Vector2{100, 24};
     player.lives = NUM_PLAYER_LIVES;

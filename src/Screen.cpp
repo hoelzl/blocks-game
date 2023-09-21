@@ -4,6 +4,26 @@
 #include "raymath.h"
 #include <cstdio>
 
+void Screen::DrawCenteredText(const char* text, int posY, int fontSize, Color color) {
+    DrawText(text, GetScreenWidth() / 2 - MeasureText(text, fontSize) / 2, posY, fontSize, color);
+}
+
+void Screen::DrawCenteredText(const Font font, const char* text, int posY, int fontSize, int spacing, Color color) {
+    DrawTextEx(font,
+               text,
+               Vector2{
+                   Screen::GetWidth<float>() / 2.0f
+                       - MeasureTextEx(font, text, (float) fontSize, (float) spacing).x / 2.0f,
+                   static_cast<float>(posY)}, static_cast<float>(fontSize), static_cast<float>(spacing), color);
+
+}
+
+void Screen::DrawFlashingText(const App& app, const char* text, int posY, int fontSize, Color color) {
+    if ((app.framesCounter / 30) % 2) {
+        Screen::DrawCenteredText(text, posY, fontSize, color);
+    }
+}
+
 void Screen::DrawFrame(const App& app) const {
 
     BeginDrawing();
@@ -42,10 +62,8 @@ void LogoScreen::DrawFrame(const App& app) const {
                 GetScreenHeight() / 2 - app.texLogo.height / 2,
                 WHITE);
     char text[80] = {0};
-    sprintf_s(text, 80, "WAIT for %.1f SECONDS...", 3.0f - (float) app.framesCounter / 60.0f);
-    DrawText(text, GetScreenWidth() / 2 - MeasureText(text, 2), GetScreenHeight() * 7 / 8,
-             20,
-             GRAY);
+    sprintf_s(text, 80, "WAIT for %.1f SECONDS...", 3.0f - static_cast<float>(app.framesCounter) / 60.0f);
+    Screen::DrawCenteredText(text, GetScreenHeight() * 7 / 8, 20, GRAY);
 }
 
 std::unique_ptr<ScreenImpl> TitleScreen::UpdateGameState(App& app) {
@@ -62,7 +80,7 @@ std::unique_ptr<ScreenImpl> TitleScreen::UpdateGameState(App& app) {
         }
         app.player.lives = NUM_PLAYER_LIVES;
         app.player.position =
-            Vector2{Screen::GetScreenWidthFloat() / 2.0f, Screen::GetScreenHeightFloat() * 7.0f / 8.0f};
+            Vector2{Screen::GetWidth<float>() / 2.0f, Screen::GetHeight<float>() * 7.0f / 8.0f};
         app.ball.position.x = app.player.position.x + app.player.size.x / 2 - app.ball.radius;
         app.ball.position.y = app.player.position.y - app.ball.radius * 2;
         app.ball.active = false;
@@ -78,57 +96,17 @@ std::unique_ptr<ScreenImpl> TitleScreen::UpdateGameState(App& app) {
 
 void TitleScreen::DrawFrame(const App& app) const {
 
-    DrawTextEx(app.font, "BLOCKS", Vector2{100, 80}, 160, 10, MAROON);
-
-    if ((app.framesCounter / 30) % 2) {
-        DrawText("PRESS [ENTER] OR TAP TO START",
-                 GetScreenWidth() / 2 - MeasureText("PRESS [ENTER] OR TAP TO START", 20) / 2,
-                 GetScreenHeight() / 2 + 60, 20,
-                 DARKGRAY);
-    }
+    Screen::DrawCenteredText(app.font, "BLOCKS", 80, 160, 10, MAROON);
+    Screen::DrawFlashingText(app, "PRESS [ENTER] OR TAP TO START", GetScreenHeight() / 2 + 60, 20, DARKGRAY);
 }
 
 std::unique_ptr<ScreenImpl> GameplayScreen::UpdateGameState(App& app) {
-
     if (IsKeyPressed('P')) {
         app.gamePaused = !app.gamePaused;
     }
-    if (IsKeyPressed('Q')) {
-        app.player.lives = 0;
-        app.gameResult = app.numActiveBricks == 0 ? 1 : 0;
-        return std::make_unique<EndingScreen>();
-    }
-    if (IsKeyPressed('W')) {
-        for (int j = 0; j < BRICKS_LINES; ++j) { // NOLINT(*-loop-convert)
-            for (int i = 0; i < BRICKS_PER_LINE; ++i) {
-                app.bricks[j][i].active = false;
-                --app.numActiveBricks;
-            }
-        }
-        app.player.lives = 0;
-        app.gameResult = 1;
-        return std::make_unique<EndingScreen>();
-    }
-    if (IsKeyPressed('L')) {
-        app.player.lives = 0;
-        app.gameResult = 0;
-        return std::make_unique<EndingScreen>();
-    }
-    if (IsKeyPressed('K')) {
-        for (int j = 0; j < BRICKS_LINES; ++j) { // NOLINT(*-loop-convert)
-            for (int i = 0; i < BRICKS_PER_LINE; ++i) {
-                int rand = GetRandomValue(0, 10);
-                if (rand < 5 && app.bricks[j][i].active) {
-                    app.bricks[j][i].resistance = 0;
-                    app.bricks[j][i].active = false;
-                    --app.numActiveBricks;
-                    if (app.numActiveBricks == 0) {
-                        app.gameResult = 1;
-                        return std::make_unique<EndingScreen>();
-                    }
-                }
-            }
-        }
+    auto forcedNewScreen{HandleDebugKeys(app)};
+    if (forcedNewScreen != nullptr) {
+        return forcedNewScreen;
     }
 
     if (!app.gamePaused) {
@@ -140,8 +118,8 @@ std::unique_ptr<ScreenImpl> GameplayScreen::UpdateGameState(App& app) {
         if ((app.player.position.x) <= 0) {
             app.player.position.x = 0;
         }
-        if ((app.player.position.x + app.player.size.x) >= Screen::GetScreenWidthFloat()) {
-            app.player.position.x = Screen::GetScreenWidthFloat() - app.player.size.x;
+        if ((app.player.position.x + app.player.size.x) >= Screen::GetWidth<float>()) {
+            app.player.position.x = Screen::GetWidth<float>() - app.player.size.x;
         }
 
         app.player.bounds =
@@ -153,8 +131,8 @@ std::unique_ptr<ScreenImpl> GameplayScreen::UpdateGameState(App& app) {
             app.ball.position.y += app.ball.speed.y;
 
             // Collision logic: ball vs. app.screen limits
-            if ((app.ball.position.x + 2 * app.ball.radius) >= Screen::GetScreenWidthFloat()) {
-                app.ball.position.x = Screen::GetScreenWidthFloat() - 2 * app.ball.radius;
+            if ((app.ball.position.x + 2 * app.ball.radius) >= Screen::GetWidth<float>()) {
+                app.ball.position.x = Screen::GetWidth<float>() - 2 * app.ball.radius;
                 app.ball.speed.x *= -1;
             } else if (app.ball.position.x <= 0) {
                 app.ball.speed.x *= -1;
@@ -203,7 +181,7 @@ std::unique_ptr<ScreenImpl> GameplayScreen::UpdateGameState(App& app) {
             }
 
             // Game ending logic
-            if ((ballCenter.y + app.ball.radius) >= Screen::GetScreenHeightFloat()) {
+            if ((ballCenter.y + app.ball.radius) >= Screen::GetHeight<float>()) {
                 app.ball.position.x = app.player.position.x + app.player.size.x / 2 - app.ball.radius;
                 app.ball.position.y = app.player.position.y - app.ball.radius * 2;
                 app.ball.active = false;
@@ -230,7 +208,6 @@ std::unique_ptr<ScreenImpl> GameplayScreen::UpdateGameState(App& app) {
 }
 
 void GameplayScreen::DrawFrame(const App& app) const {
-
     for (int j = 0; j < BRICKS_LINES; ++j) {
         for (int i = 0; i < BRICKS_PER_LINE; ++i) {
             if (app.bricks[j][i].active) {
@@ -247,8 +224,52 @@ void GameplayScreen::DrawFrame(const App& app) const {
     DrawTextureEx(app.texPaddle, app.player.position, 0.0f, 1.0f, WHITE);
     // Draw ball
     DrawTextureEx(app.texBall, app.ball.position, 0.0f, 1.0f, MAROON);
+    DrawGui(app);
 
-    // Draw GUI: player lives
+}
+
+std::unique_ptr<ScreenImpl> GameplayScreen::HandleDebugKeys(App& app) {
+    if (IsKeyPressed('Q')) {
+        app.player.lives = 0;
+        app.gameResult = app.numActiveBricks == 0 ? 1 : 0;
+        return std::make_unique<EndingScreen>();
+    }
+    if (IsKeyPressed('W')) {
+        for (int j = 0; j < BRICKS_LINES; ++j) { // NOLINT(*-loop-convert)
+            for (int i = 0; i < BRICKS_PER_LINE; ++i) {
+                app.bricks[j][i].active = false;
+                --app.numActiveBricks;
+            }
+        }
+        app.player.lives = 0;
+        app.gameResult = 1;
+        return std::make_unique<EndingScreen>();
+    }
+    if (IsKeyPressed('L')) {
+        app.player.lives = 0;
+        app.gameResult = 0;
+        return std::make_unique<EndingScreen>();
+    }
+    if (IsKeyPressed('K')) {
+        for (int j = 0; j < BRICKS_LINES; ++j) { // NOLINT(*-loop-convert)
+            for (int i = 0; i < BRICKS_PER_LINE; ++i) {
+                int rand = GetRandomValue(0, 10);
+                if (rand < 5 && app.bricks[j][i].active) {
+                    app.bricks[j][i].resistance = 0;
+                    app.bricks[j][i].active = false;
+                    --app.numActiveBricks;
+                    if (app.numActiveBricks == 0) {
+                        app.gameResult = 1;
+                        return std::make_unique<EndingScreen>();
+                    }
+                }
+            }
+        }
+    }
+    return {};
+}
+
+void GameplayScreen::DrawGui(const App& app) {// Draw GUI: player lives
     for (int i = 0; i < app.player.lives; ++i) {
         DrawRectangle(20 + 40 * i, GetScreenHeight() - 30, 35, 10, LIGHTGRAY);
     }
@@ -259,7 +280,6 @@ void GameplayScreen::DrawFrame(const App& app) const {
         DrawText("GAME PAUSED", GetScreenWidth() / 2 - MeasureText("GAME PAUSED", 40) / 2,
                  GetScreenHeight() / 2 - 40, 40, GRAY);
     }
-
 }
 
 std::unique_ptr<ScreenImpl> EndingScreen::UpdateGameState(App& app) {
@@ -276,49 +296,19 @@ void EndingScreen::DrawFrame(const App& app) const {
 
     if (app.gameResult == 0) {
         if (app.numActiveBricks > BRICKS_PER_LINE * BRICKS_LINES / 2) {
-            DrawTextEx(app.font,
-                       "YOU LOSE!",
-                       Vector2{
-                           Screen::GetScreenWidthFloat() / 2.0f -
-                               MeasureTextEx(app.font, "YOU_LOSE!", 80, 5).x / 2.0f,
-                           100},
-                       80,
-                       5, MAROON);
-
+            Screen::DrawCenteredText(app.font, "YOU LOSE!", 100, 80, 5, MAROON);
         } else {
-            DrawTextEx(app.font,
-                       "GAME OVER",
-                       Vector2{
-                           Screen::GetScreenWidthFloat() / 2.0f -
-                               MeasureTextEx(app.font, "GAME OVER", 80, 5).x / 2.0f,
-                           100},
-                       80,
-                       5, MAROON);
+            Screen::DrawCenteredText(app.font, "GAME OVER!", 100, 80, 5, MAROON);
         }
     } else if (app.gameResult == 1) {
-        DrawTextEx(app.font,
-                   "YOU WIN!",
-                   Vector2{
-                       Screen::GetScreenWidthFloat() / 2.0f -
-                           MeasureTextEx(app.font, "YOU WIN!", 80, 5).x / 2.0f,
-                       100},
-                   80,
-                   5, MAROON);
+        Screen::DrawCenteredText(app.font, "YOU WIN!", 100, 80, 5, MAROON);
     } else {
-        DrawTextEx(app.font,
-                   "WHAT HAPPENED?",
-                   Vector2{
-                       Screen::GetScreenWidthFloat() / 2.0f -
-                           MeasureTextEx(app.font, "WHAT HAPPENED?", 80, 5).x / 2.0f,
-                       100},
-                   80,
-                   5, MAROON);
+        Screen::DrawCenteredText(app.font, "WHAT HAPPENED?", 100, 80, 5, MAROON);
     }
 
     if ((app.framesCounter / 30) % 2 == 0) {
-        DrawText("PRESS [ENTER] TO PLAY AGAIN",
-                 GetScreenWidth() / 2 - MeasureText("PRESS [ENTER] TO PLAY AGAIN", 20) / 2,
-                 GetScreenHeight() / 2 + 80, 20, GRAY);
+        Screen::DrawCenteredText("PRESS [ENTER] TO PLAY AGAIN",
+                                 GetScreenHeight() / 2 + 80, 20, GRAY);
     }
 
 }
