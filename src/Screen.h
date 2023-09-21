@@ -4,6 +4,7 @@
 
 #include <cstdio>
 #include <memory>
+#include <string>
 #include "raylib.h"
 #include "Common.h"
 
@@ -62,8 +63,14 @@ public:
         return static_cast<T>(GetScreenWidth());
     }
 
-    static void DrawCenteredText(Font font, const char* text, int posY, int fontSize, int spacing, Color color);
     static void DrawCenteredText(const char* text, int posY, int fontSize, Color color);
+    static void DrawCenteredText(const App& app,
+                                 const std::string& fontName,
+                                 const char* text,
+                                 int posY,
+                                 int fontSize,
+                                 int spacing,
+                                 Color color);
     static void DrawFlashingText(const App& app, const char* text, int posY, int fontSize, Color color);
 
     void UpdateGameState(App& app);

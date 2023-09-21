@@ -8,7 +8,7 @@
 #include "App.h"
 
 int main() {
-    App app("PROJECT: BLOCKS GAME", 800, 450);
+    BlocksGame app("PROJECT: BLOCKS GAME", 800, 450);
     app.InitAppAndRunGameLoop();
     return 0;
 }

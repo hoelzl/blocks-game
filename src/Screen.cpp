@@ -8,12 +8,20 @@ void Screen::DrawCenteredText(const char* text, int posY, int fontSize, Color co
     DrawText(text, GetScreenWidth() / 2 - MeasureText(text, fontSize) / 2, posY, fontSize, color);
 }
 
-void Screen::DrawCenteredText(const Font font, const char* text, int posY, int fontSize, int spacing, Color color) {
+void Screen::DrawCenteredText(const App& app,
+                              const std::string& fontName,
+                              const char* text,
+                              int posY,
+                              int fontSize,
+                              int spacing,
+                              Color color) {
+    const Font font = app.GetFont(fontName);
     DrawTextEx(font,
                text,
                Vector2{
                    Screen::GetWidth<float>() / 2.0f
-                       - MeasureTextEx(font, text, (float) fontSize, (float) spacing).x / 2.0f,
+                       - MeasureTextEx(font, text, static_cast<float>( fontSize), static_cast<float>( spacing)).x
+                           / 2.0f,
                    static_cast<float>(posY)}, static_cast<float>(fontSize), static_cast<float>(spacing), color);
 
 }
@@ -58,8 +66,8 @@ std::unique_ptr<ScreenImpl> LogoScreen::UpdateGameState(App& app) {
 
 void LogoScreen::DrawFrame(const App& app) const {
 
-    DrawTexture(app.texLogo, GetScreenWidth() / 2 - app.texLogo.width / 2,
-                GetScreenHeight() / 2 - app.texLogo.height / 2,
+    DrawTexture(app.GetTexture("logo"), GetScreenWidth() / 2 - app.GetTexture("logo").width / 2,
+                GetScreenHeight() / 2 - app.GetTexture("logo").height / 2,
                 WHITE);
     char text[80] = {0};
     sprintf_s(text, 80, "WAIT for %.1f SECONDS...", 3.0f - static_cast<float>(app.framesCounter) / 60.0f);
@@ -88,7 +96,7 @@ std::unique_ptr<ScreenImpl> TitleScreen::UpdateGameState(App& app) {
 
     ++app.framesCounter;
     if (IsKeyPressed(KEY_ENTER) || IsGestureDetected(GESTURE_TAP)) {
-        PlaySound(app.fxStart);
+        PlaySound(app.GetSound("start"));
         return std::make_unique<GameplayScreen>();
     }
     return {};
@@ -96,7 +104,7 @@ std::unique_ptr<ScreenImpl> TitleScreen::UpdateGameState(App& app) {
 
 void TitleScreen::DrawFrame(const App& app) const {
 
-    Screen::DrawCenteredText(app.font, "BLOCKS", 80, 160, 10, MAROON);
+    Screen::DrawCenteredText(app, "setback", "BLOCKS", 80, 160, 10, MAROON);
     Screen::DrawFlashingText(app, "PRESS [ENTER] OR TAP TO START", GetScreenHeight() / 2 + 60, 20, DARKGRAY);
 }
 
@@ -153,7 +161,7 @@ std::unique_ptr<ScreenImpl> GameplayScreen::UpdateGameState(App& app) {
                 app.ball.speed.x =
                     (ballCenter.x - app.player.position.x - app.player.size.x / 2) / (app.player.size.x / 2)
                         * 5.0f;
-                PlaySound(app.fxBounce);
+                PlaySound(app.GetSound("bounce"));
             }
 
             // Collision logic: ball vs. app.bricks
@@ -166,13 +174,13 @@ std::unique_ptr<ScreenImpl> GameplayScreen::UpdateGameState(App& app) {
                             if (app.bricks[j][i].resistance <= 0) {
                                 app.bricks[j][i].active = false;
                                 --app.numActiveBricks;
-                                PlaySound(app.fxExplode);
+                                PlaySound(app.GetSound("explosion"));
                                 if (app.numActiveBricks == 0) {
                                     app.gameResult = 1;
                                     return std::make_unique<EndingScreen>();
                                 }
                             } else {
-                                PlaySound(app.fxBounce);
+                                PlaySound(app.GetSound("bounce"));
                             }
                             return {};
                         }
@@ -198,7 +206,7 @@ std::unique_ptr<ScreenImpl> GameplayScreen::UpdateGameState(App& app) {
             // Reset ball position
             app.ball.position.x = app.player.position.x + app.player.size.x / 2 - app.ball.radius;
             if (IsKeyPressed(KEY_SPACE)) {
-                const float angle = (float) GetRandomValue(-300, 300) / 10.0f;
+                const float angle = static_cast<float>(GetRandomValue(-300, 300)) / 10.0f;
                 app.ball.speed = Vector2Rotate(Vector2{0.0f, -5.0f}, angle * DEG2RAD);
                 app.ball.active = true;
             }
@@ -212,18 +220,18 @@ void GameplayScreen::DrawFrame(const App& app) const {
         for (int i = 0; i < BRICKS_PER_LINE; ++i) {
             if (app.bricks[j][i].active) {
                 if ((i + j) % 2 == 0) {
-                    DrawTextureEx(app.texBrick, app.bricks[j][i].position, 0.0f, app.brickScale, GRAY);
+                    DrawTextureEx(app.GetTexture("brick"), app.bricks[j][i].position, 0.0f, app.brickScale, GRAY);
                 } else {
-                    DrawTextureEx(app.texBrick, app.bricks[j][i].position, 0.0f, app.brickScale, DARKGRAY);
+                    DrawTextureEx(app.GetTexture("brick"), app.bricks[j][i].position, 0.0f, app.brickScale, DARKGRAY);
                 }
             }
         }
     }
 
     // Draw player
-    DrawTextureEx(app.texPaddle, app.player.position, 0.0f, 1.0f, WHITE);
+    DrawTextureEx(app.GetTexture("paddle"), app.player.position, 0.0f, 1.0f, WHITE);
     // Draw ball
-    DrawTextureEx(app.texBall, app.ball.position, 0.0f, 1.0f, MAROON);
+    DrawTextureEx(app.GetTexture("ball"), app.ball.position, 0.0f, 1.0f, MAROON);
     DrawGui(app);
 
 }
@@ -296,14 +304,14 @@ void EndingScreen::DrawFrame(const App& app) const {
 
     if (app.gameResult == 0) {
         if (app.numActiveBricks > BRICKS_PER_LINE * BRICKS_LINES / 2) {
-            Screen::DrawCenteredText(app.font, "YOU LOSE!", 100, 80, 5, MAROON);
+            Screen::DrawCenteredText(app, "setback", "YOU LOSE!", 100, 80, 5, MAROON);
         } else {
-            Screen::DrawCenteredText(app.font, "GAME OVER!", 100, 80, 5, MAROON);
+            Screen::DrawCenteredText(app, "setback", "GAME OVER!", 100, 80, 5, MAROON);
         }
     } else if (app.gameResult == 1) {
-        Screen::DrawCenteredText(app.font, "YOU WIN!", 100, 80, 5, MAROON);
+        Screen::DrawCenteredText(app, "setback", "YOU WIN!", 100, 80, 5, MAROON);
     } else {
-        Screen::DrawCenteredText(app.font, "WHAT HAPPENED?", 100, 80, 5, MAROON);
+        Screen::DrawCenteredText(app, "setback", "WHAT HAPPENED?", 100, 80, 5, MAROON);
     }
 
     if ((app.framesCounter / 30) % 2 == 0) {

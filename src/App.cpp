@@ -11,39 +11,19 @@ App::App(const char* title, int screenWidth, int screenHeight) {
 }
 
 App::~App() {
-    UnloadGraphicsResources();
-    UnloadSoundResources();
     CloseAudioDevice();
     CloseWindow();
 }
 
 void App::InitAppAndRunGameLoop() {
-    LoadGraphicsResources();
     SetMasterVolume(MASTER_VOLUME);
-    LoadSoundResources();
-    PlayMusicStream(music);
+    PlayMusicStream(GetMusic("go-wild"));
 
     InitializePlayer();
     InitializeBall();
     InitializeBricks();
 
     RunGameLoop();
-}
-
-void App::UnloadSoundResources() const {
-    UnloadSound(fxStart);
-    UnloadSound(fxBounce);
-    UnloadSound(fxExplode);
-
-    UnloadMusicStream(music);
-}
-
-void App::UnloadGraphicsResources() const {// Unload textures
-    UnloadTexture(texBall);
-    UnloadTexture(texPaddle);
-    UnloadTexture(texBrick);
-
-    UnloadFont(font);
 }
 
 void App::RunGameLoop() {
@@ -62,10 +42,11 @@ void App::RunGameLoop() {
 }
 
 void App::InitializeBricks() {// Initialize bricks
-    brickScale = Screen::GetWidth<float>() / ((float) BRICKS_PER_LINE * (float) texBrick.width);
+    brickScale = Screen::GetWidth<float>() / ((float) BRICKS_PER_LINE * (float) GetTexture("brick").width);
     for (int j = 0; j < BRICKS_LINES; ++j) {
         for (int i = 0; i < BRICKS_PER_LINE; ++i) {
-            bricks[j][i].size = Vector2{(float) texBrick.width * brickScale, (float) texBrick.height * brickScale};
+            bricks[j][i].size = Vector2{(float) GetTexture("brick").width * brickScale,
+                                        (float) GetTexture("brick").height * brickScale};
             bricks[j][i].position = Vector2{bricks[j][i].size.x * (float) i,
                                             BRICKS_POSITION_Y + bricks[j][i].size.y * (float) j};
             bricks[j][i].bounds = Rectangle{bricks[j][i].position.x, bricks[j][i].position.y, bricks[j][i].size.x,
@@ -92,31 +73,28 @@ void App::InitializePlayer() {// Initialize player
     player.lives = NUM_PLAYER_LIVES;
 }
 
-void App::LoadSoundResources() {
-    fxStart = LoadSound("resources/start.wav");
-    fxBounce = LoadSound("resources/bounce.wav");
-    fxExplode = LoadSound("resources/explosion.wav");
-
-    SetSoundVolume(fxStart, SOUND_FX_VOLUME);
-    SetSoundVolume(fxBounce, SOUND_FX_VOLUME);
-    SetSoundVolume(fxExplode, SOUND_FX_VOLUME);
-
-    music = LoadMusicStream("resources/go-wild.mp3");
-
-    SetMusicVolume(music, MUSIC_STREAM_VOLUME);
-}
-
-void App::LoadGraphicsResources() {// Note: Load resources after window initialization (OpenGL context is required)
-    texLogo = LoadTexture("resources/raylib_logo.png");
-    texBall = LoadTexture("resources/ball.png");
-    texPaddle = LoadTexture("resources/paddle.png");
-    texBrick = LoadTexture("resources/brick.png");
-
-    font = LoadFont("resources/setback.png");
-}
-
 void App::UpdateGameStateAndDrawFrame() {
     screen.UpdateGameState(*this);
-    UpdateMusicStream(music);
+    UpdateMusicStream(GetMusic("go-wild"));
     screen.DrawFrame(*this);
+}
+
+BlocksGame::BlocksGame(const char* title, int screenWidth, int screenHeight) : App(title, screenWidth, screenHeight) {
+    LoadTexture("logo", "resources/raylib_logo.png");
+    LoadTexture("ball", "resources/ball.png");
+    LoadTexture("paddle", "resources/paddle.png");
+    LoadTexture("brick", "resources/brick.png");
+
+    LoadFont("setback", "resources/setback.png");
+
+    LoadSound("start", "resources/start.wav");
+    LoadSound("bounce", "resources/bounce.wav");
+    LoadSound("explosion", "resources/explosion.wav");
+
+    SetSoundVolume(GetSound("start"), SOUND_FX_VOLUME);
+    SetSoundVolume(GetSound("bounce"), SOUND_FX_VOLUME);
+    SetSoundVolume(GetSound("explosion"), SOUND_FX_VOLUME);
+
+    LoadMusic("go-wild", "resources/go-wild.mp3");
+    SetMusicVolume(GetMusic("go-wild"), MUSIC_STREAM_VOLUME);
 }
