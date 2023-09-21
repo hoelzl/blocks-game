@@ -70,24 +70,24 @@ struct App {
     float brickScale = 1.0f;
     int numActiveBricks = 0;
 
-    Texture2D texLogo;
-    Texture2D texBall;
-    Texture2D texPaddle;
-    Texture2D texBrick;
+    Texture2D texLogo{};
+    Texture2D texBall{};
+    Texture2D texPaddle{};
+    Texture2D texBrick{};
 
-    Font font;
+    Font font{};
 
-    Sound fxStart;
-    Sound fxBounce;
-    Sound fxExplode;
+    Sound fxStart{};
+    Sound fxBounce{};
+    Sound fxExplode{};
 
-    Music music;
+    Music music{};
 
-    float GetScreenHeightFloat() {
+    static float GetScreenHeightFloat() {
         return (float) GetScreenHeight();
     }
 
-    float GetScreenWidthFloat() {
+    static float GetScreenWidthFloat() {
         return (float) GetScreenWidth();
     }
 
@@ -163,7 +163,8 @@ struct App {
             UpdateDrawFrame();
         }
 #endif
-// Unload textures
+
+        // Unload textures
         UnloadTexture(texBall);
         UnloadTexture(texPaddle);
         UnloadTexture(texBrick);
