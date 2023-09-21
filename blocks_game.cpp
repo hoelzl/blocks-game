@@ -92,7 +92,7 @@ float GetScreenWidthFloat() {
     return (float) GetScreenWidth();
 }
 
-int main() {
+void RunGameLoop() {
     const int screenWidth = 800;
     const int screenHeight = 450;
 
@@ -156,7 +156,7 @@ int main() {
     emscripten_set_main_loop(UpdateDrawFrame, 0, 1);
 #else
     SetTargetFPS(60);   // Set our game to run at 60 frames-per-second
-    //--------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------
 
     // Main game loop
     while (!WindowShouldClose())    // Detect window close button or ESC key
@@ -164,7 +164,7 @@ int main() {
         UpdateDrawFrame();
     }
 #endif
-    // Unload textures
+// Unload textures
     UnloadTexture(texBall);
     UnloadTexture(texPaddle);
     UnloadTexture(texBrick);
@@ -181,7 +181,6 @@ int main() {
 
     CloseWindow();        // Close window and OpenGL context
 
-    return 0;
 }
 
 void UpdateDrawFrame() {
@@ -481,4 +480,9 @@ void UpdateDrawFrame() {
         }
     }
     EndDrawing();
+}
+
+int main() {
+    RunGameLoop();
+    return 0;
 }
