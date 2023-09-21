@@ -13,7 +13,7 @@
 #include <emscripten/emscripten.h>
 #endif
 
-//#define DEBUG_GAME_FLOW
+#define DEBUG_GAME_FLOW
 
 #ifdef DEBUG_GAME_FLOW
 #define LOGO_SCREEN_DURATION_IN_FRAMES 60
@@ -83,6 +83,10 @@ struct App {
 
     Music music{};
 
+    int framesCounter = 0;
+    int gameResult = -1;     // -1 = Game not finished, 1 = Win, 0 = Lose
+    bool gamePaused = false;
+
     static float GetScreenHeightFloat() {
         return (float) GetScreenHeight();
     }
@@ -113,7 +117,6 @@ struct App {
         UnloadSoundResources();
         CloseAudioDevice();
         CloseWindow();
-
     }
 
     void UnloadSoundResources() const {
@@ -142,7 +145,7 @@ struct App {
         // Main game loop
         while (!WindowShouldClose())    // Detect window close button or ESC key
         {
-            UpdateDrawFrame();
+            UpdateGameStateAndDrawFrame();
         }
 #endif
     }
@@ -201,11 +204,127 @@ struct App {
         font = LoadFont("resources/setback.png");
     }
 
-    void UpdateDrawFrame() {
-        static int framesCounter = 0;
-        static int gameResult = -1;     // -1 = Game not finished, 1 = Win, 0 = Lose
-        static bool gamePaused = false;
+    void UpdateGameStateAndDrawFrame() {
+        UpdateGameState();
+        UpdateMusicStream(music);
+        DrawFrame();
+    }
 
+    void DrawFrame() const {
+        BeginDrawing();
+        {
+            ClearBackground(RAYWHITE);
+            switch (screen) {
+
+            case LOGO: {
+                DrawTexture(texLogo, GetScreenWidth() / 2 - texLogo.width / 2,
+                            GetScreenHeight() / 2 - texLogo.height / 2,
+                            WHITE);
+                char text[80] = {0};
+                sprintf_s(text, 80, "WAIT for %.1f SECONDS...", 3.0f - (float) framesCounter / 60.0f);
+                DrawText(text, GetScreenWidth() / 2 - MeasureText(text, 2), GetScreenHeight() * 7 / 8,
+                         20,
+                         GRAY);
+                break;
+            }
+            case TITLE: {
+                DrawTextEx(font, "BLOCKS", Vector2{100, 80}, 160, 10, MAROON);
+
+                if ((framesCounter / 30) % 2) {
+                    DrawText("PRESS [ENTER] OR TAP TO START",
+                             GetScreenWidth() / 2 - MeasureText("PRESS [ENTER] OR TAP TO START", 20) / 2,
+                             GetScreenHeight() / 2 + 60, 20,
+                             DARKGRAY);
+                }
+                break;
+            }
+            case GAMEPLAY: {
+                // Draw bricks
+                for (int j = 0; j < BRICKS_LINES; ++j) {
+                    for (int i = 0; i < BRICKS_PER_LINE; ++i) {
+                        if (bricks[j][i].active) {
+                            if ((i + j) % 2 == 0) {
+                                DrawTextureEx(texBrick, bricks[j][i].position, 0.0f, brickScale, GRAY);
+                            } else {
+                                DrawTextureEx(texBrick, bricks[j][i].position, 0.0f, brickScale, DARKGRAY);
+                            }
+                        }
+                    }
+                }
+
+                // Draw player
+                DrawTextureEx(texPaddle, player.position, 0.0f, 1.0f, WHITE);
+                // Draw ball
+                DrawTextureEx(texBall, ball.position, 0.0f, 1.0f, MAROON);
+
+                // Draw GUI: player lives
+                for (int i = 0; i < player.lives; ++i) {
+                    DrawRectangle(20 + 40 * i, GetScreenHeight() - 30, 35, 10, LIGHTGRAY);
+                }
+
+                // Draw pause message when required
+                if (gamePaused) {
+                    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(RAYWHITE, 0.8f));
+                    DrawText("GAME PAUSED", GetScreenWidth() / 2 - MeasureText("GAME PAUSED", 40) / 2,
+                             GetScreenHeight() / 2 - 40, 40, GRAY);
+                }
+                break;
+            }
+            case ENDING: {
+                if (gameResult == 0) {
+                    if (numActiveBricks > BRICKS_PER_LINE * BRICKS_LINES / 2) {
+                        DrawTextEx(font,
+                                   "YOU LOSE!",
+                                   Vector2{
+                                       GetScreenWidthFloat() / 2.0f -
+                                           MeasureTextEx(font, "YOU_LOSE!", 80, 5).x / 2.0f,
+                                       100},
+                                   80,
+                                   5, MAROON);
+
+                    } else {
+                        DrawTextEx(font,
+                                   "GAME OVER",
+                                   Vector2{
+                                       GetScreenWidthFloat() / 2.0f -
+                                           MeasureTextEx(font, "GAME OVER", 80, 5).x / 2.0f,
+                                       100},
+                                   80,
+                                   5, MAROON);
+                    }
+                } else if (gameResult == 1) {
+                    DrawTextEx(font,
+                               "YOU WIN!",
+                               Vector2{
+                                   GetScreenWidthFloat() / 2.0f -
+                                       MeasureTextEx(font, "YOU WIN!", 80, 5).x / 2.0f,
+                                   100},
+                               80,
+                               5, MAROON);
+                } else {
+                    DrawTextEx(font,
+                               "WHAT HAPPENED?",
+                               Vector2{
+                                   GetScreenWidthFloat() / 2.0f -
+                                       MeasureTextEx(font, "WHAT HAPPENED?", 80, 5).x / 2.0f,
+                                   100},
+                               80,
+                               5, MAROON);
+                }
+
+                if ((framesCounter / 30) % 2 == 0) {
+                    DrawText("PRESS [ENTER] TO PLAY AGAIN",
+                             GetScreenWidth() / 2 - MeasureText("PRESS [ENTER] TO PLAY AGAIN", 20) / 2,
+                             GetScreenHeight() / 2 + 80, 20, GRAY);
+                }
+                break;
+            }
+            }
+        }
+        EndDrawing();
+    }
+
+    void UpdateGameState() {
         switch (screen) {
         case LOGO: {
             ++framesCounter;
@@ -392,120 +511,6 @@ struct App {
             break;
         }
         }
-
-        UpdateMusicStream(music);
-
-        BeginDrawing();
-        {
-            ClearBackground(RAYWHITE);
-            switch (screen) {
-
-            case LOGO: {
-                DrawTexture(texLogo, GetScreenWidth() / 2 - texLogo.width / 2,
-                            GetScreenHeight() / 2 - texLogo.height / 2,
-                            WHITE);
-                char text[80] = {0};
-                sprintf_s(text, 80, "WAIT for %.1f SECONDS...", 3.0f - (float) framesCounter / 60.0f);
-                DrawText(text, GetScreenWidth() / 2 - MeasureText(text, 2), GetScreenHeight() * 7 / 8,
-                         20,
-                         GRAY);
-                break;
-            }
-            case TITLE: {
-                DrawTextEx(font, "BLOCKS", Vector2{100, 80}, 160, 10, MAROON);
-
-                if ((framesCounter / 30) % 2) {
-                    DrawText("PRESS [ENTER] OR TAP TO START",
-                             GetScreenWidth() / 2 - MeasureText("PRESS [ENTER] OR TAP TO START", 20) / 2,
-                             GetScreenHeight() / 2 + 60, 20,
-                             DARKGRAY);
-                }
-                break;
-            }
-            case GAMEPLAY: {
-                // Draw bricks
-                for (int j = 0; j < BRICKS_LINES; ++j) {
-                    for (int i = 0; i < BRICKS_PER_LINE; ++i) {
-                        if (bricks[j][i].active) {
-                            if ((i + j) % 2 == 0) {
-                                DrawTextureEx(texBrick, bricks[j][i].position, 0.0f, brickScale, GRAY);
-                            } else {
-                                DrawTextureEx(texBrick, bricks[j][i].position, 0.0f, brickScale, DARKGRAY);
-                            }
-                        }
-                    }
-                }
-
-                // Draw player
-                DrawTextureEx(texPaddle, player.position, 0.0f, 1.0f, WHITE);
-                // Draw ball
-                DrawTextureEx(texBall, ball.position, 0.0f, 1.0f, MAROON);
-
-                // Draw GUI: player lives
-                for (int i = 0; i < player.lives; ++i) {
-                    DrawRectangle(20 + 40 * i, GetScreenHeight() - 30, 35, 10, LIGHTGRAY);
-                }
-
-                // Draw pause message when required
-                if (gamePaused) {
-                    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(RAYWHITE, 0.8f));
-                    DrawText("GAME PAUSED", GetScreenWidth() / 2 - MeasureText("GAME PAUSED", 40) / 2,
-                             GetScreenHeight() / 2 - 40, 40, GRAY);
-                }
-                break;
-            }
-            case ENDING: {
-                if (gameResult == 0) {
-                    if (numActiveBricks > BRICKS_PER_LINE * BRICKS_LINES / 2) {
-                        DrawTextEx(font,
-                                   "YOU LOSE!",
-                                   Vector2{
-                                       GetScreenWidthFloat() / 2.0f -
-                                           MeasureTextEx(font, "YOU_LOSE!", 80, 5).x / 2.0f,
-                                       100},
-                                   80,
-                                   5, MAROON);
-
-                    } else {
-                        DrawTextEx(font,
-                                   "GAME OVER",
-                                   Vector2{
-                                       GetScreenWidthFloat() / 2.0f -
-                                           MeasureTextEx(font, "GAME OVER", 80, 5).x / 2.0f,
-                                       100},
-                                   80,
-                                   5, MAROON);
-                    }
-                } else if (gameResult == 1) {
-                    DrawTextEx(font,
-                               "YOU WIN!",
-                               Vector2{
-                                   GetScreenWidthFloat() / 2.0f -
-                                       MeasureTextEx(font, "YOU WIN!", 80, 5).x / 2.0f,
-                                   100},
-                               80,
-                               5, MAROON);
-                } else {
-                    DrawTextEx(font,
-                               "WHAT HAPPENED?",
-                               Vector2{
-                                   GetScreenWidthFloat() / 2.0f -
-                                       MeasureTextEx(font, "WHAT HAPPENED?", 80, 5).x / 2.0f,
-                                   100},
-                               80,
-                               5, MAROON);
-                }
-
-                if ((framesCounter / 30) % 2 == 0) {
-                    DrawText("PRESS [ENTER] TO PLAY AGAIN",
-                             GetScreenWidth() / 2 - MeasureText("PRESS [ENTER] TO PLAY AGAIN", 20) / 2,
-                             GetScreenHeight() / 2 + 80, 20, GRAY);
-                }
-                break;
-            }
-            }
-        }
-        EndDrawing();
     }
 };
 
