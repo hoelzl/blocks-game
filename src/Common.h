@@ -26,7 +26,4 @@
 
 #endif
 
-enum GameScreenType {
-    LOGO, TITLE, GAMEPLAY, ENDING
-};
 #endif //BLOCKS_GAME_COMMON_H
