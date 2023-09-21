@@ -5,10 +5,7 @@
  * See <https://github.com/raysan5/raylib-intro-course> for the tutorial.
  */
 
-#include <cstdio>
-#include "raylib.h"
-#include "raymath.h"
-#include "blocks_game.h"
+#include "App.h"
 
 int main() {
     App app;
