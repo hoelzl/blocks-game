@@ -11,6 +11,7 @@ class App {
 public:
     explicit App(const char* title = "RAYLIB APP", int screenWidth = 800, int screenHeight = 450);
     virtual ~App();
+    void InitAppAndRunGameLoop();
 
     Screen screen{};
     Player player{0};
@@ -36,7 +37,6 @@ public:
     int gameResult{-1};     // -1 = Game not finished, 1 = Win, 0 = Lose
     bool gamePaused{false};
 
-    void InitAppAndRunGameLoop();
     void UnloadSoundResources() const;
     void UnloadGraphicsResources() const;
     void RunGameLoop();
