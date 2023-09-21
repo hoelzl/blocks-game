@@ -5,14 +5,20 @@
 #include <emscripten/emscripten.h>
 #endif
 
-void App::InitAppAndRunGameLoop() {
-    const int screenWidth = 800;
-    const int screenHeight = 450;
-
-    InitWindow(screenWidth, screenHeight, "PROJECT: BLOCKS GAME");
-    LoadGraphicsResources();
-
+App::App(const char* title, int screenWidth, int screenHeight) {
+    InitWindow(screenWidth, screenHeight, title);
     InitAudioDevice();
+}
+
+App::~App() {
+    UnloadGraphicsResources();
+    UnloadSoundResources();
+    CloseAudioDevice();
+    CloseWindow();
+}
+
+void App::InitAppAndRunGameLoop() {
+    LoadGraphicsResources();
     SetMasterVolume(MASTER_VOLUME);
     LoadSoundResources();
     PlayMusicStream(music);
@@ -22,11 +28,6 @@ void App::InitAppAndRunGameLoop() {
     InitializeBricks();
 
     RunGameLoop();
-
-    UnloadGraphicsResources();
-    UnloadSoundResources();
-    CloseAudioDevice();
-    CloseWindow();
 }
 
 void App::UnloadSoundResources() const {

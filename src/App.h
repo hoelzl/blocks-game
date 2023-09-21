@@ -9,6 +9,9 @@
 
 class App {
 public:
+    explicit App(const char* title = "RAYLIB APP", int screenWidth = 800, int screenHeight = 450);
+    virtual ~App();
+
     Screen screen{};
     Player player{0};
     Ball ball{0};
@@ -44,4 +47,5 @@ public:
     void LoadGraphicsResources();
     void UpdateGameStateAndDrawFrame();
 };
+
 #endif //BLOCKS_GAME_APP_H
