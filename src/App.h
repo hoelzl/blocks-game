@@ -4,16 +4,17 @@
 
 #include "Common.h"
 #include "Actors.h"
+#include "Screen.h"
+#include <memory>
 
-class Screen;
-
-struct App {
-    GameScreenType screen = LOGO;
-    Player player = {0};
-    Ball ball = {0};
-    Brick bricks[BRICKS_LINES][BRICKS_PER_LINE] = {0};
-    float brickScale = 1.0f;
-    int numActiveBricks = 0;
+class App {
+public:
+    Screen screen{};
+    Player player{0};
+    Ball ball{0};
+    Brick bricks[BRICKS_LINES][BRICKS_PER_LINE]{0};
+    float brickScale{1.0f};
+    int numActiveBricks{0};
 
     Texture2D texLogo{};
     Texture2D texBall{};
@@ -28,9 +29,9 @@ struct App {
 
     Music music{};
 
-    int framesCounter = 0;
-    int gameResult = -1;     // -1 = Game not finished, 1 = Win, 0 = Lose
-    bool gamePaused = false;
+    int framesCounter{0};
+    int gameResult{-1};     // -1 = Game not finished, 1 = Win, 0 = Lose
+    bool gamePaused{false};
 
     void InitAppAndRunGameLoop();
     void UnloadSoundResources() const;

@@ -115,7 +115,7 @@ void App::LoadGraphicsResources() {// Note: Load resources after window initiali
 }
 
 void App::UpdateGameStateAndDrawFrame() {
-    Screen::UpdateGameState(*this);
+    screen.UpdateGameState(*this);
     UpdateMusicStream(music);
-    Screen::DrawFrame(*this);
+    screen.DrawFrame(*this);
 }

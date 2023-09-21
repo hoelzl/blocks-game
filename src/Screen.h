@@ -3,20 +3,24 @@
 #define BLOCKS_GAME_SCREEN_H
 
 #include <cstdio>
+#include <memory>
 #include "raylib.h"
-#include "App.h"
+#include "Common.h"
+
+class App;
 
 class Screen {
-
 public:
+    GameScreenType screenType{LOGO};
+
     static float GetScreenHeightFloat() {
         return static_cast<float>(GetScreenHeight());
     }
     static float GetScreenWidthFloat() {
         return static_cast<float>(GetScreenWidth());
     }
-    static void DrawFrame(const App& app);
-    static void UpdateGameState(App& app);
+    void DrawFrame(const App& app) const;
+    void UpdateGameState(App& app);
 };
 
 #endif //BLOCKS_GAME_SCREEN_H

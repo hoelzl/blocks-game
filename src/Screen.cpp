@@ -4,11 +4,11 @@
 #include "raymath.h"
 #include <cstdio>
 
-void Screen::DrawFrame(const App& app) {
+void Screen::DrawFrame(const App& app) const {
     BeginDrawing();
     {
         ClearBackground(RAYWHITE);
-        switch (app.screen) {
+        switch (screenType) {
 
         case LOGO: {
             DrawTexture(app.texLogo, GetScreenWidth() / 2 - app.texLogo.width / 2,
@@ -117,13 +117,14 @@ void Screen::DrawFrame(const App& app) {
     }
     EndDrawing();
 }
+
 void Screen::UpdateGameState(App& app) {
-    switch (app.screen) {
+    switch (screenType) {
     case LOGO: {
         ++app.framesCounter;
 
         if (app.framesCounter > LOGO_SCREEN_DURATION_IN_FRAMES) {
-            app.screen = TITLE;
+            screenType = TITLE;
             app.framesCounter = 0;
         }
         break;
@@ -149,7 +150,7 @@ void Screen::UpdateGameState(App& app) {
 
         ++app.framesCounter;
         if (IsKeyPressed(KEY_ENTER) || IsGestureDetected(GESTURE_TAP)) {
-            app.screen = GAMEPLAY;
+            screenType = GAMEPLAY;
             PlaySound(app.fxStart);
         }
         break;
@@ -161,7 +162,7 @@ void Screen::UpdateGameState(App& app) {
         if (IsKeyPressed('Q')) {
             app.player.lives = 0;
             app.gameResult = app.numActiveBricks == 0 ? 1 : 0;
-            app.screen = ENDING;
+            screenType = ENDING;
             break;
         }
         if (IsKeyPressed('W')) {
@@ -173,13 +174,13 @@ void Screen::UpdateGameState(App& app) {
             }
             app.player.lives = 0;
             app.gameResult = 1;
-            app.screen = ENDING;
+            screenType = ENDING;
             break;
         }
         if (IsKeyPressed('L')) {
             app.player.lives = 0;
             app.gameResult = 0;
-            app.screen = ENDING;
+            screenType = ENDING;
             break;
         }
         if (IsKeyPressed('K')) {
@@ -191,7 +192,7 @@ void Screen::UpdateGameState(App& app) {
                         app.bricks[j][i].active = false;
                         --app.numActiveBricks;
                         if (app.numActiveBricks == 0) {
-                            app.screen = ENDING;
+                            screenType = ENDING;
                             app.gameResult = 1;
                             break;
                         }
@@ -258,7 +259,7 @@ void Screen::UpdateGameState(App& app) {
                                     --app.numActiveBricks;
                                     PlaySound(app.fxExplode);
                                     if (app.numActiveBricks == 0) {
-                                        app.screen = ENDING;
+                                        screenType = ENDING;
                                         app.gameResult = 1;
                                     }
                                 } else {
@@ -281,7 +282,7 @@ void Screen::UpdateGameState(App& app) {
                 }
 
                 if (app.player.lives <= 0) {
-                    app.screen = ENDING;
+                    screenType = ENDING;
                     app.player.lives = NUM_PLAYER_LIVES;
                     app.gameResult = app.numActiveBricks == 0 ? 1 : 0;
                     app.framesCounter = 0;
@@ -302,7 +303,7 @@ void Screen::UpdateGameState(App& app) {
         ++app.framesCounter;
 
         if (IsKeyPressed(KEY_ENTER) || IsGestureDetected(GESTURE_TAP)) {
-            app.screen = TITLE;
+            screenType = TITLE;
         }
         break;
     }
