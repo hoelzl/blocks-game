@@ -2,7 +2,7 @@
 #ifndef BLOCKS_GAME_COMMON_H
 #define BLOCKS_GAME_COMMON_H
 
-#define DEBUG_GAME_FLOW
+// #define DEBUG_GAME_FLOW
 
 #ifdef DEBUG_GAME_FLOW
 
@@ -11,10 +11,7 @@
 #define BRICKS_LINES 2
 #define BRICKS_PER_LINE 8
 #define MASTER_VOLUME 0.0f
-#define BRICKS_POSITION_Y 50
-#define BRICK_RESISTANCE 1
-#define SOUND_FX_VOLUME 0.2f
-#define MUSIC_STREAM_VOLUME 0.8f
+
 
 #else
 
@@ -25,5 +22,10 @@
 #define MASTER_VOLUME 0.2f
 
 #endif
+
+#define BRICKS_POSITION_Y 50
+#define BRICK_RESISTANCE 1
+#define SOUND_FX_VOLUME 0.2f
+#define MUSIC_STREAM_VOLUME 0.8f
 
 #endif //BLOCKS_GAME_COMMON_H
